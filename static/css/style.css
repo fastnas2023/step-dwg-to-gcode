@@ -1,0 +1,216 @@
+/* 全局样式 */
+:root {
+    --primary-color: #0d6efd;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --background-color: #f8f9fa;
+    --border-color: #dee2e6;
+    --text-color: #212529;
+    --text-muted: #6c757d;
+}
+
+body {
+    padding-top: 20px;
+    padding-bottom: 40px;
+    color: var(--text-color);
+    background-color: #f9fafb;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.container {
+    max-width: 1140px;
+}
+
+/* 卡片样式 */
+.content-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+    border-radius: 8px;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.card {
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+/* 表单元素 */
+.form-control {
+    border-radius: 5px;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+}
+
+.form-control:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    margin-bottom: 0.5rem;
+}
+
+/* 按钮样式 */
+.btn {
+    padding: 0.5rem 1.25rem;
+    border-radius: 5px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #0b5ed7;
+    border-color: #0a58ca;
+}
+
+.btn-secondary {
+    background-color: var(--secondary-color);
+    border-color: var(--secondary-color);
+}
+
+/* 文件上传区域 */
+.upload-area {
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    padding: 30px;
+    text-align: center;
+    background-color: var(--background-color);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.upload-area:hover, .upload-area.dragover {
+    border-color: var(--primary-color);
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.upload-icon {
+    font-size: 48px;
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+
+/* 通知消息 */
+.flash-messages {
+    margin-bottom: 20px;
+}
+
+.alert {
+    border-radius: 5px;
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+}
+
+/* 底部样式 */
+footer {
+    margin-top: 50px;
+    text-align: center;
+    color: var(--text-muted);
+    padding: 20px 0;
+}
+
+/* 进度指示器 */
+.steps-indicator {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 30px;
+    position: relative;
+}
+
+.steps-indicator::before {
+    content: '';
+    position: absolute;
+    top: 14px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: var(--border-color);
+    z-index: 1;
+}
+
+.step-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+}
+
+.step-circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color: var(--background-color);
+    border: 2px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: var(--secondary-color);
+}
+
+.step-item.active .step-circle {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    color: white;
+}
+
+.step-item.completed .step-circle {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+    color: white;
+}
+
+.step-text {
+    font-size: 14px;
+    color: var(--text-muted);
+    text-align: center;
+}
+
+.step-item.active .step-text {
+    color: var(--primary-color);
+    font-weight: 500;
+}
+
+.step-item.completed .step-text {
+    color: var(--success-color);
+    font-weight: 500;
+}
+
+/* 自定义范围滑块 */
+.custom-range-slider {
+    width: 100%;
+    margin-bottom: 15px;
+}
+
+.range-values {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+}
+
+.range-value {
+    font-size: 12px;
+    color: var(--text-muted);
+} 
