@@ -9,11 +9,15 @@ echo "===== 开始更新GitHub仓库 ====="
 if [ -f "qrcode-alipay-small.png" ]; then
   echo "移动支付宝二维码到templates/static/img目录"
   cp qrcode-alipay-small.png templates/static/img/
+  echo "移动支付宝二维码到static/img目录"
+  cp qrcode-alipay-small.png static/img/
 fi
 
 if [ -f "qrcode-wechat-small.png" ]; then
   echo "移动微信支付二维码到templates/static/img目录"
   cp qrcode-wechat-small.png templates/static/img/
+  echo "移动微信支付二维码到static/img目录"
+  cp qrcode-wechat-small.png static/img/
 fi
 
 # 检查GitHub CLI是否已安装
