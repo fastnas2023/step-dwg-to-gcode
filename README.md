@@ -8,6 +8,17 @@
 - 微信/QQ: 350400138
 - 邮箱: huaxumedia@gmail.com
 
+## Web界面预览
+
+### 主页
+![主页界面](screenshots/main_page.png)
+
+### DWG文件转换设置页面
+![DWG设置页面](screenshots/dwg_settings.png)
+
+### 转换结果页面
+![转换结果页面](screenshots/results.png)
+
 ## 功能特点
 
 - **多格式支持**: 支持STEP和DWG文件格式
@@ -88,6 +99,17 @@ http://localhost:8888
 # STEP/DWG to G-code Converter - Web Interface
 
 This is a web application for converting STEP and DWG files to FANUC-compatible G-code, providing an intuitive user interface and powerful conversion capabilities.
+
+## Web Interface Screenshots
+
+### Main Page
+![Main Page](screenshots/main_page.png)
+
+### DWG Settings Page
+![DWG Settings](screenshots/dwg_settings.png)
+
+### Results Page
+![Results Page](screenshots/results.png)
 
 ## Features
 
