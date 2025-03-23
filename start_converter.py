@@ -74,6 +74,17 @@ def check_dependencies():
             return False
     return True
 
+def print_footer():
+    """打印程序信息"""
+    print("\n")
+    print("=" * 60)
+    print("STEP/DWG到G代码转换器")
+    print("版本: 1.0")
+    print("联系方式: 微信/QQ: 350400138 | 邮箱: huaxumedia@gmail.com")
+    print("感谢使用！")
+    print("=" * 60)
+    print("\n")
+
 def main():
     """主函数"""
     print_welcome()
@@ -100,6 +111,9 @@ def main():
     
     # 启动Flask应用
     os.system(f"{sys.executable} web_interface.py")
+    
+    # 打印程序信息
+    print_footer()
 
 if __name__ == "__main__":
     try:

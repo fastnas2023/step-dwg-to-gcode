@@ -1,8 +1,12 @@
-# STEP/DWG 到 G代码转换器 - Web界面
+# STEP/DWG到G代码转换器
 
-这是一个将STEP和DWG文件转换为FANUC兼容G代码的Web应用程序，提供直观的用户界面和强大的转换功能。
+这是一个将STEP和DWG文件转换为FANUC G代码的工具，支持命令行和Web界面。
 
-![程序界面](plots/converter_comparison.png)
+## 联系方式
+
+如有任何问题或需要帮助，请通过以下方式联系：
+- 微信/QQ: 350400138
+- 邮箱: huaxumedia@gmail.com
 
 ## 功能特点
 
