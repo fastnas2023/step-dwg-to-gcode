@@ -13,12 +13,12 @@ from pathlib import Path
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
 OUTPUT_FOLDER = os.path.join(os.getcwd(), 'output')
 PLOTS_FOLDER = os.path.join(os.getcwd(), 'plots')
-STATIC_PLOTS_FOLDER = os.path.join(os.getcwd(), 'templates/static/plots')
+STATIC_PLOTS_FOLDER = os.path.join(os.getcwd(), 'static/plots')
 ALLOWED_EXTENSIONS = {'stp', 'step', 'dwg'}
 MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB
 
 # 应用初始化
-app = Flask(__name__, template_folder='templates')
+app = Flask(__name__, template_folder='templates', static_folder='static')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
 app.config['PLOTS_FOLDER'] = PLOTS_FOLDER
