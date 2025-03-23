@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STEP/DWG到G代码转换器</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .upload-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .features {
+            margin-top: 40px;
+        }
+        .feature-item {
+            margin-bottom: 20px;
+        }
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        footer {
+            margin-top: 50px;
+            text-align: center;
+            color: #6c757d;
+        }
+        .drag-area {
+            border: 2px dashed #0d6efd;
+            border-radius: 5px;
+            padding: 40px 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .drag-area:hover {
+            background-color: #e9ecef;
+        }
+        .drag-area.active {
+            border-color: #198754;
+            background-color: rgba(25, 135, 84, 0.1);
+        }
+        .drag-area .icon {
+            font-size: 50px;
+            color: #0d6efd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>STEP/DWG到G代码转换器</h1>
+            <p class="lead">将CAD文件转换为FANUC兼容的G代码</p>
+        </div>
+
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="upload-container">
+            <h3 class="mb-4">上传文件</h3>
+            
+            <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" id="upload-form">
+                <div class="mb-3">
+                    <label for="visible-file-input" class="form-label">选择STEP或DWG文件</label>
+                    <input type="file" name="file" id="visible-file-input" class="form-control" accept=".stp,.step,.dwg" required>
+                    <div class="form-text">支持格式: .stp, .step, .dwg</div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <button type="submit" class="btn btn-primary btn-lg">开始转换</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="features">
+            <h3 class="mb-4">转换器功能</h3>
+            
+            <div class="row">
+                <div class="col-md-4 feature-item">
+                    <h5>🔄 多种转换器支持</h5>
+                    <p>支持标准版、无NumPy版和NumPy优化版三种转换器，适应不同场景需求</p>
+                </div>
+                <div class="col-md-4 feature-item">
+                    <h5>📊 可视化支持</h5>
+                    <p>使用NumPy优化版时可生成模型和路径的3D可视化图表</p>
+                </div>
+                <div class="col-md-4 feature-item">
+                    <h5>🔧 丰富的参数设置</h5>
+                    <p>可调整进给速度、安全高度、切削深度等加工参数</p>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 feature-item">
+                    <h5>🛠️ 支持DWG文件</h5>
+                    <p>可直接转换AutoCAD的DWG文件，自动完成DWG到STEP的中间转换</p>
+                </div>
+                <div class="col-md-4 feature-item">
+                    <h5>⚙️ 零件模板系统</h5>
+                    <p>支持多种预定义零件类型，针对不同零件进行优化处理</p>
+                </div>
+                <div class="col-md-4 feature-item">
+                    <h5>📱 友好的Web界面</h5>
+                    <p>无需编程知识，通过浏览器即可完成复杂的转换操作</p>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>STEP到G代码转换器 - Web界面 &copy; 2023</p>
+            
+            <!-- 打赏支持部分 -->
+            <div class="donation-section mt-4">
+                <h5 class="text-center mb-3">如果这个工具对您有帮助，欢迎打赏支持</h5>
+                <div class="row justify-content-center">
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">支付宝</h6>
+                                <img src="{{ url_for('static', filename='img/qrcode-alipay-small.png') }}" alt="支付宝打赏" class="img-fluid" style="max-width: 200px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">微信支付</h6>
+                                <img src="{{ url_for('static', filename='img/qrcode-wechat-small.png') }}" alt="微信打赏" class="img-fluid" style="max-width: 200px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 简化的文件上传预览
+        document.getElementById('visible-file-input').addEventListener('change', function() {
+            const fileInfo = document.querySelector('.form-text');
+            if (this.files.length > 0) {
+                const file = this.files[0];
+                fileInfo.textContent = `已选择: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            } else {
+                fileInfo.textContent = '支持格式: .stp, .step, .dwg';
+            }
+        });
+    </script>
+</body>
+</html> 

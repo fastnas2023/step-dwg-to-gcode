@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>转换结果 - STEP/DWG到G代码转换器</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .result-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .result-card {
+            margin-bottom: 20px;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.05);
+            padding: 20px;
+        }
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        footer {
+            margin-top: 50px;
+            text-align: center;
+            color: #6c757d;
+        }
+        .code-preview {
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .stat-card {
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #0d6efd;
+        }
+        .visualization-tabs {
+            margin-bottom: 20px;
+        }
+        .visualization-content {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .visualization-content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.1);
+        }
+        .line-number {
+            color: #6c757d;
+            -webkit-user-select: none;
+            user-select: none;
+            margin-right: 10px;
+            display: inline-block;
+            width: 30px;
+            text-align: right;
+        }
+        .download-options {
+            margin-top: 30px;
+        }
+        .download-btn {
+            margin-bottom: 10px;
+            width: 100%;
+            text-align: left;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>转换结果</h1>
+            <p class="lead">成功生成G代码，请查看结果并下载所需文件</p>
+        </div>
+
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="result-container">
+            <div class="result-card">
+                <h4>转换信息</h4>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="stat-card">
+                            <h6>源文件</h6>
+                            <p class="mb-0">{{ original_filename }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="stat-card">
+                            <h6>输出文件</h6>
+                            <p class="mb-0">{{ output_filename }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="stat-card">
+                            <h6>行数</h6>
+                            <p class="mb-0">{{ stats.line_count }} 行</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card">
+                            <h6>预计加工时间</h6>
+                            <p class="mb-0">{{ stats.estimated_time }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card">
+                            <h6>文件大小</h6>
+                            <p class="mb-0">{{ stats.file_size }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="result-card">
+                <h4>G代码预览</h4>
+                <p class="text-muted">显示前100行G代码内容，完整内容请下载文件</p>
+                <div class="code-preview">
+                    {% for line in gcode_preview %}
+                        <div>
+                            <span class="line-number">{{ loop.index }}</span>{{ line }}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% if has_visualizations %}
+            <div class="result-card">
+                <h4>可视化图表</h4>
+                <p class="text-muted">查看生成的可视化图表，了解加工路径和模型特征</p>
+                
+                <ul class="nav nav-tabs visualization-tabs" id="visualizationTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="model3d-tab" data-bs-toggle="tab" data-bs-target="#model3d" type="button" role="tab" aria-controls="model3d" aria-selected="true">3D模型</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="xy-tab" data-bs-toggle="tab" data-bs-target="#xy" type="button" role="tab" aria-controls="xy" aria-selected="false">XY投影</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="contours-tab" data-bs-toggle="tab" data-bs-target="#contours" type="button" role="tab" aria-controls="contours" aria-selected="false">轮廓图</button>
+                    </li>
+                </ul>
+                
+                <div class="tab-content" id="visualizationTabContent">
+                    <div class="tab-pane fade show active visualization-content" id="model3d" role="tabpanel" aria-labelledby="model3d-tab">
+                        <img src="{{ url_for('static', filename='plots/' + session_id + '/3d_model.png') }}" alt="3D模型和加工路径">
+                        <p class="text-muted">3D模型和加工路径可视化</p>
+                    </div>
+                    <div class="tab-pane fade visualization-content" id="xy" role="tabpanel" aria-labelledby="xy-tab">
+                        <img src="{{ url_for('static', filename='plots/' + session_id + '/xy_projection.png') }}" alt="XY平面投影">
+                        <p class="text-muted">加工路径的XY平面投影图</p>
+                    </div>
+                    <div class="tab-pane fade visualization-content" id="contours" role="tabpanel" aria-labelledby="contours-tab">
+                        <img src="{{ url_for('static', filename='plots/' + session_id + '/contours.png') }}" alt="轮廓图">
+                        <p class="text-muted">零件轮廓和特征识别结果</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="result-card">
+                <h4>下载选项</h4>
+                <p class="text-muted">选择要下载的文件</p>
+                
+                <div class="download-options">
+                    <a href="{{ url_for('download', filename=output_filename) }}" class="btn btn-primary download-btn">
+                        <i class="bi bi-file-earmark-code"></i> 下载G代码文件 ({{ stats.file_size }})
+                    </a>
+                    
+                    {% if has_visualizations %}
+                    <div class="dropdown">
+                        <button class="btn btn-secondary dropdown-toggle download-btn" type="button" id="dropdownVisualizations" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-file-earmark-image"></i> 下载可视化图表
+                        </button>
+                        <ul class="dropdown-menu w-100" aria-labelledby="dropdownVisualizations">
+                            <li><a class="dropdown-item" href="{{ url_for('download_plot', filename='3d_model.png') }}">3D模型图 (.png)</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('download_plot', filename='xy_projection.png') }}">XY平面投影图 (.png)</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('download_plot', filename='contours.png') }}">轮廓图 (.png)</a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ url_for('download_all_plots') }}">下载所有图表 (.zip)</a></li>
+                        </ul>
+                    </div>
+                    {% endif %}
+                    
+                    {% if has_step %}
+                    <a href="{{ url_for('download', filename=step_filename) }}" class="btn btn-info download-btn">
+                        <i class="bi bi-file-earmark-binary"></i> 下载STEP文件
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">返回首页</a>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">处理新文件</a>
+            </div>
+        </div>
+
+        <footer>
+            <p>STEP到G代码转换器 - Web界面 &copy; 2023</p>
+            
+            <!-- 打赏支持部分 -->
+            <div class="donation-section mt-4">
+                <h5 class="text-center mb-3">如果这个工具对您有帮助，欢迎打赏支持</h5>
+                <div class="row justify-content-center">
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">支付宝</h6>
+                                <img src="{{ url_for('static', filename='img/qrcode-alipay-small.png') }}" alt="支付宝打赏" class="img-fluid" style="max-width: 200px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="card-title">微信支付</h6>
+                                <img src="{{ url_for('static', filename='img/qrcode-wechat-small.png') }}" alt="微信打赏" class="img-fluid" style="max-width: 200px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 

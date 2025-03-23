@@ -1,0 +1,22 @@
+# 排除铜铝复合（cnc）目录
+/铜铝复合（cnc）/
+铜铝复合（cnc）/
+
+# 虚拟环境
+/gcode_env/
+gcode_env/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 临时上传和输出文件
+/uploads/*
+/output/*
+!/uploads/.gitkeep
+!/output/.gitkeep
+
+# 系统文件
+.DS_Store
+Thumbs.db
+.vscode
+.idea 

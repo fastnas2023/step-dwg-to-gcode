@@ -1,0 +1,9 @@
+{
+  "input_file": "/Users/jason/G-code/uploads/INTER_BUSBAR_FRONT-1.STP",
+  "output_file": "/Users/jason/G-code/output/INTER_BUSBAR_FRONT-1_gcode.nc",
+  "machining_time_minutes": 387.3476613529294,
+  "machining_time_seconds": 23240.859681175763,
+  "feed_rate": 600.0,
+  "points_count": 616,
+  "gcode_lines": 78761
+}

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>转换错误 - STEP/DWG到G代码转换器</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .error-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .error-icon {
+            font-size: 64px;
+            color: #dc3545;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .error-details {
+            background-color: #f5f5f5;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error-help {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 5px;
+        }
+        .troubleshooting-list {
+            margin-top: 15px;
+        }
+        footer {
+            margin-top: 50px;
+            text-align: center;
+            color: #6c757d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>转换过程中出错</h1>
+            <p class="lead">系统在处理您的文件时遇到了问题</p>
+        </div>
+
+        <div class="error-container">
+            <div class="error-icon">⚠️</div>
+            
+            <h4 class="text-center mb-4">{{ error_title }}</h4>
+            
+            <div class="error-details">{{ error_message }}</div>
+            
+            <div class="error-help">
+                <h5>可能的解决方案</h5>
+                <div class="troubleshooting-list">
+                    <ul>
+                        {% if 'file format' in error_message.lower() %}
+                            <li>请确认您上传的是有效的STEP或DWG文件格式</li>
+                            <li>尝试使用CAD软件重新保存文件并验证格式</li>
+                        {% elif 'permission' in error_message.lower() %}
+                            <li>文件权限问题，请稍后重试</li>
+                        {% elif 'memory' in error_message.lower() %}
+                            <li>转换过程内存不足，可能是由于文件过大</li>
+                            <li>尝试使用轻量级转换器（无NumPy版本）</li>
+                        {% elif 'nan' in error_message.lower() or 'invalid value' in error_message.lower() %}
+                            <li>数据中包含无效值，可能是文件中包含不支持的几何特征</li>
+                            <li>尝试在CAD软件中重新处理该模型，确保所有几何形状有效</li>
+                        {% else %}
+                            <li>尝试使用不同的转换参数重新进行转换</li>
+                            <li>检查文件是否包含不支持的特征或格式</li>
+                            <li>如果问题仍然存在，请联系系统管理员获取帮助</li>
+                        {% endif %}
+                    </ul>
+                </div>
+                
+                <div class="mt-4">
+                    <h5>技术信息</h5>
+                    <div>
+                        <strong>时间戳:</strong> {{ timestamp }}<br>
+                        <strong>错误代码:</strong> {{ error_code if error_code else 'UNKNOWN' }}<br>
+                        <strong>会话ID:</strong> {{ session_id }}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <a href="{{ url_for('index') }}" class="btn btn-secondary me-2">返回首页</a>
+                {% if retry_url %}
+                <a href="{{ retry_url }}" class="btn btn-primary">重试转换</a>
+                {% else %}
+                <a href="{{ url_for('index') }}" class="btn btn-primary">上传新文件</a>
+                {% endif %}
+            </div>
+        </div>
+
+        <footer>
+            <p>STEP到G代码转换器 - Web界面 &copy; 2023</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html> 
