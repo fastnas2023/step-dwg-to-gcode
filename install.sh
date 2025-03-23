@@ -14,31 +14,37 @@ fi
 
 echo "使用Python: $($PYTHON --version)"
 
-# 创建并激活虚拟环境
-if [ ! -d "gcode_env" ]; then
-    echo "创建虚拟环境..."
-    $PYTHON -m venv gcode_env
-else
-    echo "虚拟环境已存在，跳过创建"
-fi
+# 创建虚拟环境
+echo "创建虚拟环境..."
+$PYTHON -m venv gcode_env
 
 # 激活虚拟环境
 echo "激活虚拟环境..."
-if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
-    # Windows
-    source gcode_env/Scripts/activate
-else
-    # Linux/Mac
-    source gcode_env/bin/activate
-fi
+source gcode_env/bin/activate
 
 # 安装依赖
-echo "安装依赖项..."
+echo "安装依赖..."
 pip install -r requirements.txt
 
-# 创建必要的目录
+# 创建输出和上传目录
 echo "创建必要的目录..."
-mkdir -p uploads output plots templates/static/plots templates/static/img
+mkdir -p uploads output plots static/plots static/img templates/static/img
+
+# 确保二维码图片在正确的位置
+if [ -f "qrcode-alipay-small.png" ]; then
+  echo "复制支付宝二维码到静态目录..."
+  cp qrcode-alipay-small.png static/img/
+  cp qrcode-alipay-small.png templates/static/img/
+fi
+
+if [ -f "qrcode-wechat-small.png" ]; then
+  echo "复制微信二维码到静态目录..."
+  cp qrcode-wechat-small.png static/img/
+  cp qrcode-wechat-small.png templates/static/img/
+fi
+
+# 设置权限
+chmod -R 755 static uploads output plots
 
 # 显示完成信息
 echo ""

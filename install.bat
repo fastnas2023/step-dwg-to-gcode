@@ -30,11 +30,20 @@ pip install -r requirements.txt
 
 REM 创建必要的目录
 echo 创建必要的目录...
-if not exist uploads mkdir uploads
-if not exist output mkdir output
-if not exist plots mkdir plots
-if not exist templates\static\plots mkdir templates\static\plots
-if not exist templates\static\img mkdir templates\static\img
+mkdir uploads output plots static\plots static\img templates\static\img 2>nul
+
+REM 确保二维码图片在正确的位置
+if exist qrcode-alipay-small.png (
+    echo 复制支付宝二维码到静态目录...
+    copy qrcode-alipay-small.png static\img\
+    copy qrcode-alipay-small.png templates\static\img\
+)
+
+if exist qrcode-wechat-small.png (
+    echo 复制微信二维码到静态目录...
+    copy qrcode-wechat-small.png static\img\
+    copy qrcode-wechat-small.png templates\static\img\
+)
 
 REM 显示完成信息
 echo.
