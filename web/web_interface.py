@@ -332,214 +332,457 @@ def dwg_conversion():
     filename = session.get('original_filename', '未知文件')
     return render_template('dwg_conversion.html', filename=filename)
 
-@app.route('/convert_step', methods=['POST'])
-def convert_step():
-    """处理STEP文件转G代码转换"""
-    if 'uploaded_file' not in session:
-        flash('会话已过期，请重新上传文件', 'error')
-        return redirect(url_for('index'))
+@app.route('/convert', methods=['POST'])
+def convert_file():
+    """转换文件为G代码"""
+    data = request.get_json()
+    filename = data.get('filename')
+    if not filename:
+        return jsonify({'error': '没有指定文件名'}), 400
+    
+    # 转换参数
+    params = data.get('params', {})
+    feed_rate = params.get('feed_rate', 500)
+    rapid_height = params.get('rapid_height', 10.0)
+    cut_depth = params.get('cut_depth', 5.0)
+    tool_diameter = params.get('tool_diameter', 3.0)
+    
+    user_dir = os.path.join(UPLOAD_FOLDER, session.get('user_id', 'default'))
+    user_output_dir = os.path.join(OUTPUT_FOLDER, session.get('user_id', 'default'))
+    
+    # 确保输出目录存在
+    if not os.path.exists(user_output_dir):
+        os.makedirs(user_output_dir)
+    
+    file_path = os.path.join(user_dir, filename)
+    if not os.path.exists(file_path):
+        return jsonify({'error': f"文件 {filename} 不存在"}), 404
+    
+    # 确定文件类型
+    file_ext = os.path.splitext(filename)[1].lower().lstrip('.')
+    output_filename = f"{os.path.splitext(filename)[0]}.nc"
+    output_path = os.path.join(user_output_dir, output_filename)
     
     try:
-        # 获取参数
-        converter_type = request.form.get('converter_type', 'numpy')
-        controller_type = request.form.get('controller_type', 'fanuc')
-        feed_rate = request.form.get('feed_rate', '500')
-        safety_height = request.form.get('safety_height', '10')
-        cut_depth = request.form.get('cut_depth', '0.5')
-        generate_visualization = 'generate_visualization' in request.form
-        
-        input_file = session['uploaded_file']
-        original_filename = session['original_filename']
-        output_filename = f"{os.path.splitext(original_filename)[0]}_{controller_type}_gcode.nc"
-        output_path = os.path.join(app.config['OUTPUT_FOLDER'], output_filename)
-        
-        # 检查输入文件是否存在
-        if not os.path.exists(input_file):
-            raise FileNotFoundError(f"输入文件不存在: {input_file}")
-        
-        # 确保输出目录存在
-        os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        
-        # 根据转换器类型选择脚本
-        if converter_type == 'numpy':
-            script = 'step_to_fanuc_numpy.py'
-        elif converter_type == 'no_numpy':
-            script = 'fanuc_stp_to_gcode.py'
-        else:
-            script = 'fanuc_stp_to_gcode_orig.py'
-        
-        # 构建脚本的绝对路径
-        script_path = os.path.join(os.path.dirname(__file__), script)
-        
-        # 检查脚本是否存在
-        if not os.path.exists(script_path):
-            raise FileNotFoundError(f"转换脚本不存在: {script_path}")
-        
-        # 构建命令
-        cmd = [
-            'python', 
-            script_path,  # 使用绝对路径
-            input_file, 
-            '-o', output_path,
-            '-f', feed_rate,
-            '-s', safety_height,
-            '-d', cut_depth,
-            '-c', controller_type  # 添加控制器类型参数
-        ]
-        
-        if generate_visualization and converter_type == 'numpy':
-            cmd.append('-v')
-        
-        # 打印命令以便调试
-        print(f"执行命令: {' '.join(cmd)}")
-        
-        # 执行转换
-        process = subprocess.run(
-            cmd, 
-            capture_output=True, 
-            text=True, 
-            check=False,  # 不使用check=True，以便我们能捕获完整的错误输出
-            timeout=300  # 设置较长的超时时间，允许处理更复杂的文件
-        )
-        
-        # 输出完整的命令执行结果以便调试
-        print(f"命令标准输出: {process.stdout}")
-        print(f"命令错误输出: {process.stderr}")
-        print(f"返回码: {process.returncode}")
-        
-        # 检查是否成功
-        if process.returncode != 0:
-            error_message = f"STEP转G代码过程返回非零状态: {process.returncode}\n输出信息:\n{process.stdout}\n错误信息:\n{process.stderr}"
-            app.logger.error(error_message)
-            raise Exception(error_message)
-        
-        # 检查输出文件是否生成
-        if not os.path.exists(output_path):
-            error_message = f"G代码文件未生成: {output_path}"
-            app.logger.error(error_message)
-            raise FileNotFoundError(error_message)
-        
-        # 保存输出文件路径到会话
-        session['output_file'] = output_path
-        session['output_filename'] = output_filename
-        
-        # 如果生成了可视化，复制到静态目录
-        if generate_visualization and converter_type == 'numpy':
-            copy_plots_to_static(app.config['PLOTS_FOLDER'], session['session_id'])
-            session['has_visualizations'] = True
-        else:
-            session['has_visualizations'] = False
-        
-        # 重定向到结果页面
-        return redirect(url_for('show_results'))
-    
-    except subprocess.TimeoutExpired:
-        error_message = "STEP转换过程超时，请尝试处理更小的文件或减少模型复杂度"
-        app.logger.error(error_message)
-        return render_template('error.html', 
-                               error_title="STEP文件转换超时",
-                               error_message=error_message,
-                               error_code="STEP_CONVERSION_TIMEOUT",
-                               timestamp=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                               session_id=session.get('session_id', 'unknown'),
-                               retry_url=url_for('step_conversion'))
-    except FileNotFoundError as e:
-        app.logger.error(f"文件未找到: {str(e)}")
-        return render_template('error.html', 
-                               error_title="文件未找到",
-                               error_message=str(e),
-                               error_code="FILE_NOT_FOUND",
-                               timestamp=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                               session_id=session.get('session_id', 'unknown'),
-                               retry_url=url_for('step_conversion'))
-    except Exception as e:
-        app.logger.error(f"STEP转换错误: {str(e)}")
-        import traceback
-        app.logger.error(traceback.format_exc())
-        return render_template('error.html', 
-                               error_title="STEP文件转换错误",
-                               error_message=str(e),
-                               error_code="STEP_CONVERSION_ERROR",
-                               timestamp=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                               session_id=session.get('session_id', 'unknown'),
-                               retry_url=url_for('step_conversion'))
-
-@app.route('/convert_dwg', methods=['POST'])
-def convert_dwg():
-    """处理DWG文件到STEP转换，然后重定向到STEP转换页面"""
-    if 'uploaded_file' not in session:
-        flash('会话已过期，请重新上传文件', 'error')
-        return redirect(url_for('index'))
-    
-    try:
-        # 获取参数
-        part_type = request.form.get('part_type', 'generic')
-        
-        input_file = session['uploaded_file']
-        original_filename = session['original_filename']
-        step_filename = f"{os.path.splitext(original_filename)[0]}.stp"
-        step_path = os.path.join(app.config['UPLOAD_FOLDER'], step_filename)
-        
-        # 构建脚本的绝对路径，确保脚本在当前目录中
-        script_path = os.path.join(os.path.dirname(__file__), 'advanced_dwg_to_step.py')
-        
-        # 执行DWG到STEP转换，修改为使用python直接调用脚本
-        cmd = [
-            'python',
-            script_path,  # 使用绝对路径
-            input_file,
-            step_path,  # 输出文件作为位置参数
-            '--type', part_type
-        ]
-        
-        # 打印命令以便调试
-        print(f"执行命令: {' '.join(cmd)}")
-        
-        # 执行转换
-        process = subprocess.run(
-            cmd, 
-            capture_output=True, 
-            text=True, 
-            check=False  # 不使用check=True，以便我们能捕获完整的错误输出
-        )
-        
-        # 输出完整的命令执行结果以便调试
-        print(f"命令标准输出: {process.stdout}")
-        print(f"命令错误输出: {process.stderr}")
-        print(f"返回码: {process.returncode}")
-        
-        # 检查是否成功
-        if process.returncode != 0:
-            error_message = f"DWG转STEP过程返回非零状态: {process.returncode}\n输出信息:\n{process.stdout}\n错误信息:\n{process.stderr}"
-            print(error_message)
-            raise Exception(error_message)
-        
-        # 检查STEP文件是否生成
-        if not os.path.exists(step_path):
-            print(f"转换未生成STEP文件: {step_path}")
-            raise Exception(f"转换未能生成STEP文件: {step_path}")
+        # 根据文件类型选择转换方法
+        if file_ext in ['stp', 'step']:
+            # 确定当前平台
+            system_platform = platform.machine().lower()
             
-        print(f"STEP文件已生成: {step_path}")
+            if os.path.exists(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'step_processor_fallback.py')):
+                script_path = 'step_to_fanuc_numpy.py'
+            else:
+                script_path = os.path.join('web', 'step_to_fanuc_numpy.py')
+            
+            # 调用STEP转换脚本
+            cmd = [
+                sys.executable,
+                script_path,
+                file_path,
+                '-o', output_path,
+                '-f', str(feed_rate),
+                '-r', str(rapid_height),
+                '-d', str(cut_depth),
+                '-t', str(tool_diameter),
+                '-v'  # 显示详细输出
+            ]
+            
+            # 执行命令
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode != 0:
+                return jsonify({
+                    'error': f"转换失败: {result.stderr}",
+                    'details': result.stdout
+                }), 500
+            
+        elif file_ext in ['dwg', 'dxf']:
+            # 创建临时STEP文件
+            step_filename = f"{os.path.splitext(filename)[0]}.stp"
+            step_path = os.path.join(user_dir, step_filename)
+            
+            # 调用DWG/DXF转STEP脚本
+            dwg_to_step_path = os.path.join('web', 'dwg_to_step.py')
+            
+            # 检查脚本是否存在
+            if not os.path.exists(dwg_to_step_path):
+                # 如果脚本不存在，创建一个基本的实现
+                create_basic_dwg_to_step_script()
+                dwg_to_step_path = 'dwg_to_step.py'
+            
+            # 执行DWG到STEP的转换
+            dwg_cmd = [
+                sys.executable,
+                dwg_to_step_path,
+                file_path,
+                step_path
+            ]
+            
+            # 执行DWG到STEP转换
+            dwg_result = subprocess.run(dwg_cmd, capture_output=True, text=True)
+            
+            if dwg_result.returncode != 0:
+                return jsonify({
+                    'error': f"DWG到STEP转换失败: {dwg_result.stderr}",
+                    'details': dwg_result.stdout
+                }), 500
+            
+            if not os.path.exists(step_path):
+                return jsonify({
+                    'error': f"DWG到STEP转换未生成STEP文件",
+                    'details': "请检查转换脚本实现"
+                }), 500
+            
+            # 使用转换后的STEP文件生成G代码
+            if os.path.exists(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'step_processor_fallback.py')):
+                script_path = 'step_to_fanuc_numpy.py'
+            else:
+                script_path = os.path.join('web', 'step_to_fanuc_numpy.py')
+            
+            # 调用STEP转换脚本
+            cmd = [
+                sys.executable,
+                script_path,
+                step_path,
+                '-o', output_path,
+                '-f', str(feed_rate),
+                '-r', str(rapid_height),
+                '-d', str(cut_depth),
+                '-t', str(tool_diameter),
+                '-v'  # 显示详细输出
+            ]
+            
+            # 执行命令
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            if result.returncode != 0:
+                return jsonify({
+                    'error': f"转换失败: {result.stderr}",
+                    'details': result.stdout
+                }), 500
+        else:
+            return jsonify({'error': '不支持的文件类型'}), 400
         
-        # 更新会话中的文件为生成的STEP文件
-        session['uploaded_file'] = step_path
-        session['original_filename'] = step_filename
-        session['dwg_original'] = original_filename
-        session['has_step'] = True
-        
-        # 重定向到STEP转换页面
-        flash('DWG文件已成功转换为STEP格式，请配置G代码生成参数', 'success')
-        return redirect(url_for('step_conversion'))
+        # 转换成功
+        return jsonify({
+            'success': True,
+            'message': '文件转换成功',
+            'output_filename': output_filename,
+            'download_url': url_for('download_file', filename=output_filename)
+        })
     
     except Exception as e:
-        app.logger.error(f"DWG转换错误: {str(e)}")
-        return render_template('error.html', 
-                               error_title="DWG文件转换错误",
-                               error_message=str(e),
-                               error_code="DWG_CONVERSION_ERROR",
-                               timestamp=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                               session_id=session.get('session_id', 'unknown'),
-                               retry_url=url_for('dwg_conversion'))
+        return jsonify({'error': f"转换过程中出错: {str(e)}"}), 500
+
+def create_basic_dwg_to_step_script():
+    """创建基本的DWG到STEP转换脚本"""
+    script_content = """#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+'''
+基本的DWG/DXF到STEP转换脚本
+注意：这是一个基本实现，仅用于示例
+实际应用中，推荐使用专业CAD库如ODA或FreeCAD进行转换
+'''
+
+import sys
+import os
+import re
+import numpy as np
+from time import time
+
+def parse_dxf_file(input_file):
+    '''简单解析DXF文件，提取点和线'''
+    print(f"解析DXF/DWG文件: {input_file}")
+    try:
+        # 尝试使用ezdxf库解析
+        try:
+            import ezdxf
+            dwg = ezdxf.readfile(input_file)
+            msp = dwg.modelspace()
+            
+            # 提取实体
+            points = []
+            lines = []
+            
+            # 提取LINE实体
+            for line in msp.query('LINE'):
+                start = line.dxf.start
+                end = line.dxf.end
+                lines.append((start, end))
+                points.append(start)
+                points.append(end)
+            
+            # 提取CIRCLE实体
+            for circle in msp.query('CIRCLE'):
+                center = circle.dxf.center
+                radius = circle.dxf.radius
+                # 转换圆为多段线
+                for i in range(32):
+                    angle = i * 2 * np.pi / 32
+                    next_angle = (i + 1) * 2 * np.pi / 32
+                    p1 = (center[0] + radius * np.cos(angle), 
+                          center[1] + radius * np.sin(angle), 
+                          center[2])
+                    p2 = (center[0] + radius * np.cos(next_angle), 
+                          center[1] + radius * np.sin(next_angle), 
+                          center[2])
+                    lines.append((p1, p2))
+                    points.append(p1)
+                    points.append(p2)
+            
+            # 提取ARC实体
+            for arc in msp.query('ARC'):
+                center = arc.dxf.center
+                radius = arc.dxf.radius
+                start_angle = arc.dxf.start_angle * np.pi / 180
+                end_angle = arc.dxf.end_angle * np.pi / 180
+                
+                # 转换弧为多段线
+                if end_angle < start_angle:
+                    end_angle += 2 * np.pi
+                
+                num_segments = 16
+                angle_step = (end_angle - start_angle) / num_segments
+                
+                for i in range(num_segments):
+                    angle = start_angle + i * angle_step
+                    next_angle = start_angle + (i + 1) * angle_step
+                    p1 = (center[0] + radius * np.cos(angle), 
+                          center[1] + radius * np.sin(angle), 
+                          center[2])
+                    p2 = (center[0] + radius * np.cos(next_angle), 
+                          center[1] + radius * np.sin(next_angle), 
+                          center[2])
+                    lines.append((p1, p2))
+                    points.append(p1)
+                    points.append(p2)
+            
+            print(f"从DXF文件中提取了 {len(points)} 个点和 {len(lines)} 条线")
+            return points, lines
+            
+        except ImportError:
+            print("警告: ezdxf库未安装，使用简单文本处理方法解析DXF")
+            
+            with open(input_file, 'r', errors='ignore') as f:
+                content = f.read()
+            
+            # 简单提取POLYLINE和LINE实体
+            # 注意：这是非常基础的实现，仅适用于简单DXF文件
+            points = []
+            lines = []
+            
+            # 查找所有点（10,20,30表示X,Y,Z坐标）
+            point_pattern = r'POINT\\n.*?10\\n(.*?)\\n.*?20\\n(.*?)\\n.*?30\\n(.*?)\\n'
+            for match in re.finditer(point_pattern, content, re.DOTALL):
+                x = float(match.group(1))
+                y = float(match.group(2))
+                z = float(match.group(3))
+                points.append((x, y, z))
+            
+            # 查找所有线（从点到点）
+            line_start_pattern = r'LINE\\n.*?10\\n(.*?)\\n.*?20\\n(.*?)\\n.*?30\\n(.*?)\\n'
+            line_end_pattern = r'.*?11\\n(.*?)\\n.*?21\\n(.*?)\\n.*?31\\n(.*?)\\n'
+            
+            for i, match in enumerate(re.finditer(line_start_pattern, content, re.DOTALL)):
+                start_x = float(match.group(1))
+                start_y = float(match.group(2))
+                start_z = float(match.group(3))
+                
+                # 找到对应的终点
+                end_match = re.search(line_end_pattern, content[match.end():], re.DOTALL)
+                if end_match:
+                    end_x = float(end_match.group(1))
+                    end_y = float(end_match.group(2))
+                    end_z = float(end_match.group(3))
+                    
+                    start_point = (start_x, start_y, start_z)
+                    end_point = (end_x, end_y, end_z)
+                    points.append(start_point)
+                    points.append(end_point)
+                    lines.append((start_point, end_point))
+            
+            print(f"从DXF文件中提取了 {len(points)} 个点和 {len(lines)} 条线")
+            return points, lines
+    
+    except Exception as e:
+        print(f"解析DXF/DWG文件出错: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return [], []
+
+def generate_step_file(points, lines, output_file):
+    '''生成简单的STEP文件'''
+    print(f"生成STEP文件: {output_file}")
+    try:
+        with open(output_file, 'w') as f:
+            # STEP文件头
+            f.write("ISO-10303-21;\n")
+            f.write("HEADER;\n")
+            f.write("FILE_DESCRIPTION(('CAD'),'2;1');\n")
+            f.write(f"FILE_NAME('{os.path.basename(output_file)}','Generated by dwg_to_step.py',('AUTHOR'),('ORGANIZATION'),'','','');\n")
+            f.write("FILE_SCHEMA(('AUTOMOTIVE_DESIGN'));\n")
+            f.write("ENDSEC;\n")
+            f.write("DATA;\n")
+            
+            # 添加顶级实体
+            f.write("#1=APPLICATION_CONTEXT('automotive design');\n")
+            f.write("#2=APPLICATION_PROTOCOL_DEFINITION('Draft International Standard','automotive_design',2000,#1);\n")
+            f.write("#3=PRODUCT_DEFINITION_CONTEXT('design',#1,'design');\n")
+            f.write("#4=PRODUCT_CONTEXT('AUTOMOTIVE_DESIGN',#1,'');\n")
+            f.write("#5=PRODUCT('CONVERTER_GENERATED_GEOMETRY','CONVERTER_GENERATED_GEOMETRY','',(#4));\n")
+            f.write("#6=PRODUCT_DEFINITION_FORMATION('','',#5);\n")
+            f.write("#7=PRODUCT_DEFINITION('design','',#6,#3);\n")
+            f.write("#8=PRODUCT_DEFINITION_SHAPE('','',#7);\n")
+            
+            # 添加SHAPE_DEFINITION_REPRESENTATION
+            f.write("#9=SHAPE_DEFINITION_REPRESENTATION(#8,#10);\n")
+            f.write("#10=SHAPE_REPRESENTATION('',(#11),#12);\n")
+            f.write("#11=AXIS2_PLACEMENT_3D('',#13,#14,#15);\n")
+            f.write("#12=GEOMETRIC_REPRESENTATION_CONTEXT(3) GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((#16)) GLOBAL_UNIT_ASSIGNED_CONTEXT((#17,#18,#19));\n")
+            f.write("#13=CARTESIAN_POINT('',(0.0,0.0,0.0));\n")
+            f.write("#14=DIRECTION('',(0.0,0.0,1.0));\n")
+            f.write("#15=DIRECTION('',(1.0,0.0,0.0));\n")
+            f.write("#16=UNCERTAINTY_MEASURE_WITH_UNIT(LENGTH_MEASURE(1.0e-06),#17,'','');\n")
+            f.write("#17=LENGTH_MEASURE_WITH_UNIT(LENGTH_MEASURE(1.0),#20);\n")
+            f.write("#18=PLANE_ANGLE_MEASURE_WITH_UNIT(PLANE_ANGLE_MEASURE(0.017453293),#21);\n")
+            f.write("#19=SOLID_ANGLE_MEASURE_WITH_UNIT(SOLID_ANGLE_MEASURE(0.000290888),#22);\n")
+            f.write("#20=(CONVERSION_BASED_UNIT('MILLIMETRE',#23)LENGTH_UNIT());\n")
+            f.write("#21=(NAMED_UNIT(*))PLANE_ANGLE_UNIT();\n")
+            f.write("#22=(NAMED_UNIT(*))SOLID_ANGLE_UNIT();\n")
+            f.write("#23=LENGTH_MEASURE_WITH_UNIT(LENGTH_MEASURE(1000.0),#24);\n")
+            f.write("#24=(NAMED_UNIT(*))SI_UNIT(MILLI,METRE);\n")
+            
+            # 添加点和线
+            entity_id = 25
+            manifest = []
+            
+            # 定义点
+            point_ids = {}
+            for i, point in enumerate(points):
+                x, y, z = point
+                f.write(f"#{entity_id}=CARTESIAN_POINT('POINT{i+1}',(${x:.6f},${y:.6f},${z:.6f}));\n".replace('$', ''))
+                point_ids[i] = entity_id
+                entity_id += 1
+            
+            # 定义方向向量
+            f.write(f"#{entity_id}=DIRECTION('DIRECTION',(0.0,0.0,1.0));\n")
+            z_dir_id = entity_id
+            entity_id += 1
+            
+            # 定义线
+            line_ids = []
+            for i, line in enumerate(lines):
+                start_idx = points.index(line[0])
+                end_idx = points.index(line[1])
+                
+                # VERTEX_POINT for start
+                f.write(f"#{entity_id}=VERTEX_POINT('VERTEX{i+1}_START',#{point_ids[start_idx]});\n")
+                start_vertex_id = entity_id
+                entity_id += 1
+                
+                # VERTEX_POINT for end
+                f.write(f"#{entity_id}=VERTEX_POINT('VERTEX{i+1}_END',#{point_ids[end_idx]});\n")
+                end_vertex_id = entity_id
+                entity_id += 1
+                
+                # 方向向量
+                start_x, start_y, start_z = line[0]
+                end_x, end_y, end_z = line[1]
+                dx = end_x - start_x
+                dy = end_y - start_y
+                dz = end_z - start_z
+                length = np.sqrt(dx*dx + dy*dy + dz*dz)
+                
+                if length > 0:
+                    dx /= length
+                    dy /= length
+                    dz /= length
+                else:
+                    dx, dy, dz = 1, 0, 0
+                
+                f.write(f"#{entity_id}=DIRECTION('LINE{i+1}_DIRECTION',(${dx:.6f},${dy:.6f},${dz:.6f}));\n".replace('$', ''))
+                dir_id = entity_id
+                entity_id += 1
+                
+                # VECTOR
+                f.write(f"#{entity_id}=VECTOR('LINE{i+1}_VECTOR',#{dir_id},${length:.6f});\n".replace('$', ''))
+                vector_id = entity_id
+                entity_id += 1
+                
+                # LINE
+                f.write(f"#{entity_id}=LINE('LINE{i+1}',#{point_ids[start_idx]},#{vector_id});\n")
+                line_id = entity_id
+                entity_id += 1
+                
+                # EDGE_CURVE
+                f.write(f"#{entity_id}=EDGE_CURVE('EDGE{i+1}',#{start_vertex_id},#{end_vertex_id},#{line_id},.T.);\n")
+                edge_curve_id = entity_id
+                entity_id += 1
+                
+                # ORIENTED_EDGE
+                f.write(f"#{entity_id}=ORIENTED_EDGE('',*,*,#{edge_curve_id},.T.);\n")
+                oriented_edge_id = entity_id
+                entity_id += 1
+                
+                line_ids.append(oriented_edge_id)
+                manifest.append(oriented_edge_id)
+            
+            # 添加到SHAPE_REPRESENTATION
+            manifest_str = ','.join([f'#{id}' for id in manifest])
+            f.write(f"#10=SHAPE_REPRESENTATION('',(#11,{manifest_str}),#12);\n")
+            
+            # 结束STEP文件
+            f.write("ENDSEC;\n")
+            f.write("END-ISO-10303-21;\n")
+            
+            return True
+    
+    except Exception as e:
+        print(f"生成STEP文件出错: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+def main():
+    '''主函数'''
+    if len(sys.argv) < 3:
+        print("用法: python dwg_to_step.py 输入文件.dwg/dxf 输出文件.stp")
+        sys.exit(1)
+    
+    input_file = sys.argv[1]
+    output_file = sys.argv[2]
+    
+    if not os.path.exists(input_file):
+        print(f"错误: 输入文件不存在 - {input_file}")
+        sys.exit(1)
+    
+    start_time = time()
+    
+    # 解析DXF/DWG文件
+    points, lines = parse_dxf_file(input_file)
+    
+    if not points or not lines:
+        print("错误: 未能从DXF/DWG文件中提取几何信息")
+        sys.exit(1)
+    
+    # 去除重复点
+    unique_points = []
+    for point in points:
+        if point not in unique_points:
+            unique_points.append(point)
+    
+    # 生成STEP文件
+    if generate_step_file(unique_points, lines, output_file):
+        print(f"成功生成STEP文件: {output_file}")
+        print(f"转换用时: {time() - start_time:.2f} 秒")
+        sys.exit(0)
+    else:
+        print("生成STEP文件失败")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
 
 @app.route('/results')
 def show_results():

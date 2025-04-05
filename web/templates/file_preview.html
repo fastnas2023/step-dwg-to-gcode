@@ -218,6 +218,11 @@
             </div>
 
             <div class="action-buttons">
+                {% if preview_type == 'step' or preview_type == 'dwg' %}
+                <button id="convert-btn" class="btn btn-success" onclick="convertFile('{{ filename }}')">
+                    <i class="bi bi-gear"></i> 转换为G代码
+                </button>
+                {% endif %}
                 <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
                     <i class="bi bi-arrow-left"></i> 返回主页
                 </a>
@@ -232,5 +237,86 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+
+    <script>
+    function convertFile(filename) {
+        // 显示加载状态
+        document.getElementById('convert-btn').innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 正在转换...';
+        document.getElementById('convert-btn').disabled = true;
+        
+        // 准备转换参数
+        const params = {
+            feed_rate: 500,
+            rapid_height: 10.0,
+            cut_depth: 5.0,
+            tool_diameter: 3.0
+        };
+        
+        // 发送转换请求
+        fetch('/convert', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                filename: filename,
+                params: params
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 转换成功，显示下载链接
+                const resultContainer = document.createElement('div');
+                resultContainer.className = 'alert alert-success mt-3';
+                resultContainer.innerHTML = `
+                    <h4>转换成功!</h4>
+                    <p>${data.message}</p>
+                    <a href="${data.download_url}" class="btn btn-primary">
+                        <i class="bi bi-download"></i> 下载G代码文件
+                    </a>
+                `;
+                document.querySelector('.preview-container').appendChild(resultContainer);
+                
+                // 恢复按钮状态
+                document.getElementById('convert-btn').innerHTML = '<i class="bi bi-check-circle"></i> 转换完成';
+                // 滚动到结果区域
+                resultContainer.scrollIntoView({ behavior: 'smooth' });
+            } else {
+                // 转换失败，显示错误信息
+                const errorContainer = document.createElement('div');
+                errorContainer.className = 'alert alert-danger mt-3';
+                errorContainer.innerHTML = `
+                    <h4>转换失败</h4>
+                    <p>${data.error}</p>
+                    <pre class="mt-2">${data.details || ''}</pre>
+                `;
+                document.querySelector('.preview-container').appendChild(errorContainer);
+                
+                // 恢复按钮状态
+                document.getElementById('convert-btn').innerHTML = '<i class="bi bi-exclamation-triangle"></i> 转换失败';
+                document.getElementById('convert-btn').disabled = false;
+                // 滚动到错误区域
+                errorContainer.scrollIntoView({ behavior: 'smooth' });
+            }
+        })
+        .catch(error => {
+            // 处理网络或其他错误
+            const errorContainer = document.createElement('div');
+            errorContainer.className = 'alert alert-danger mt-3';
+            errorContainer.innerHTML = `
+                <h4>请求错误</h4>
+                <p>与服务器通信时出错: ${error.message}</p>
+            `;
+            document.querySelector('.preview-container').appendChild(errorContainer);
+            
+            // 恢复按钮状态
+            document.getElementById('convert-btn').innerHTML = '<i class="bi bi-exclamation-triangle"></i> 转换失败';
+            document.getElementById('convert-btn').disabled = false;
+            // 滚动到错误区域
+            errorContainer.scrollIntoView({ behavior: 'smooth' });
+        });
+    }
+    </script>
 </body>
 </html> 
