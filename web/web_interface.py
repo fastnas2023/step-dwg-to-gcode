@@ -1,3 +1,11 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+STEP/DWG到G代码转换服务 - Web界面
+此脚本提供基于Flask的Web界面，用于上传和处理STEP/DWG文件
+"""
+
 import os
 import shutil
 import subprocess
@@ -8,33 +16,37 @@ import zipfile
 import time
 import sys
 import json
+import platform
 from flask import Flask, request, render_template, redirect, url_for, flash, session, send_from_directory, jsonify
 from werkzeug.utils import secure_filename
 from pathlib import Path
 
-# 添加当前目录到Python路径，以便导入模块
-sys.path.append(os.path.dirname(__file__))
-from numpy_step_processor import NumPyStepProcessor, analyze_step_file
+# 添加项目根目录到PATH
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 配置
-UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
-OUTPUT_FOLDER = os.path.join(os.getcwd(), 'output')
-PLOTS_FOLDER = os.path.join(os.getcwd(), 'plots')
-STATIC_PLOTS_FOLDER = os.path.join(os.getcwd(), 'static/plots')
-ALLOWED_EXTENSIONS = {'stp', 'step', 'dwg'}
+UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+OUTPUT_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
+TEMP_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'temp')
+STATIC_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+PLOTS_FOLDER = os.path.join(STATIC_FOLDER, 'plots')
+STATIC_PLOTS_FOLDER = os.path.join(STATIC_FOLDER, 'static/plots')
+ALLOWED_EXTENSIONS = {'stp', 'step', 'dwg', 'dxf'}
 MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB
 
 # 应用初始化
 app = Flask(__name__, template_folder='templates', static_folder='static')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['OUTPUT_FOLDER'] = OUTPUT_FOLDER
+app.config['TEMP_FOLDER'] = TEMP_FOLDER
+app.config['STATIC_FOLDER'] = STATIC_FOLDER
 app.config['PLOTS_FOLDER'] = PLOTS_FOLDER
 app.config['STATIC_PLOTS_FOLDER'] = STATIC_PLOTS_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_CONTENT_LENGTH
 app.secret_key = os.urandom(24)
 
 # 确保各目录存在
-for folder in [UPLOAD_FOLDER, OUTPUT_FOLDER, PLOTS_FOLDER, STATIC_PLOTS_FOLDER]:
+for folder in [UPLOAD_FOLDER, OUTPUT_FOLDER, TEMP_FOLDER, PLOTS_FOLDER, STATIC_PLOTS_FOLDER]:
     os.makedirs(folder, exist_ok=True)
 
 # 辅助函数
@@ -126,169 +138,129 @@ def copy_plots_to_static(source_dir, session_id):
 # 页面路由
 @app.route('/')
 def index():
-    """主页 - 文件上传界面"""
-    prepare_user_session()
+    """主页"""
+    # 生成会话ID用于区分不同用户的文件
+    if 'user_id' not in session:
+        session['user_id'] = str(uuid.uuid4())
+    
     return render_template('index.html')
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
     """处理文件上传"""
-    print("收到上传请求，表单数据:", request.form)
-    print("files对象:", request.files)
-    
     if 'file' not in request.files:
-        flash('未找到文件', 'error')
-        return redirect(url_for('index'))
+        return jsonify({'error': '没有选择文件'}), 400
     
     file = request.files['file']
-    print(f"接收到文件: {file.filename}")
-    
     if file.filename == '':
-        flash('未选择文件', 'error')
-        return redirect(url_for('index'))
+        return jsonify({'error': '没有选择文件'}), 400
     
-    if file and allowed_file(file.filename):
-        filename = secure_filename(file.filename)
-        session_id = prepare_user_session()
-        
-        # 保存上传的文件
-        file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-        file.save(file_path)
-        print(f"文件已保存到: {file_path}")
-        
-        # 在会话中记录文件路径
-        session['uploaded_file'] = file_path
-        session['original_filename'] = filename
-        
-        # 添加文件预览功能
-        flash('文件上传成功，您可以查看文件内容或继续转换', 'success')
-        
-        # 重定向到文件预览页面
-        return redirect(url_for('file_preview'))
-    else:
-        flash('不支持的文件类型', 'error')
-        return redirect(url_for('index'))
+    if not allowed_file(file.filename):
+        return jsonify({'error': '不支持的文件类型，请上传STEP、STP、DWG或DXF文件'}), 400
+    
+    # 使用用户会话ID创建唯一目录
+    user_dir = os.path.join(UPLOAD_FOLDER, session.get('user_id', 'default'))
+    if not os.path.exists(user_dir):
+        os.makedirs(user_dir)
+    
+    # 保存文件
+    filename = file.filename
+    file_path = os.path.join(user_dir, filename)
+    file.save(file_path)
+    
+    # 重定向到预览页面
+    return jsonify({
+        'success': True,
+        'message': '文件上传成功',
+        'filename': filename,
+        'redirect': url_for('file_preview', filename=filename)
+    })
 
 @app.route('/file_preview')
 def file_preview():
-    """上传文件预览页面"""
-    if 'uploaded_file' not in session:
-        flash('请先上传文件', 'error')
+    """文件预览页面"""
+    filename = request.args.get('filename')
+    if not filename:
         return redirect(url_for('index'))
     
-    filename = session.get('original_filename', '未知文件')
-    file_path = session.get('uploaded_file', '')
+    user_dir = os.path.join(UPLOAD_FOLDER, session.get('user_id', 'default'))
+    file_path = os.path.join(user_dir, filename)
     
-    file_info = {
-        'name': filename,
-        'size': get_file_size(file_path),
-        'type': os.path.splitext(filename)[1].lower(),
-        'created': time.strftime('%Y-%m-%d %H:%M:%S', 
-                               time.localtime(os.path.getctime(file_path))),
-        'modified': time.strftime('%Y-%m-%d %H:%M:%S', 
-                                time.localtime(os.path.getmtime(file_path)))
-    }
+    if not os.path.exists(file_path):
+        return render_template('error.html', message=f"文件 {filename} 不存在")
     
-    # 根据文件类型决定预览内容
-    file_content = None
-    preview_type = None
+    # 获取文件信息
+    file_size = os.path.getsize(file_path)
+    file_size_formatted = f"{file_size / 1024:.2f} KB" if file_size < 1024*1024 else f"{file_size / (1024*1024):.2f} MB"
+    
+    file_ext = os.path.splitext(filename)[1].lower().lstrip('.')
+    file_type = 'step' if file_ext in ['stp', 'step'] else 'dwg' if file_ext in ['dwg', 'dxf'] else 'unknown'
+    
+    creation_time = datetime.fromtimestamp(os.path.getctime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
+    modification_time = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
+    
+    # 读取文件内容预览（前100行）
+    file_content = ""
+    try:
+        with open(file_path, 'r', errors='ignore') as f:
+            lines = f.readlines()
+            file_content = ''.join(lines[:100])
+    except:
+        file_content = "无法读取文件内容（可能是二进制文件）"
+    
+    # 对于STEP文件，尝试生成可视化
     has_visualization = False
-    visualization_path = None
+    visualization_path = ""
     
-    if filename.lower().endswith(('.stp', '.step')):
-        # STEP文件预览 - 只读取前100行
+    if file_type == 'step':
         try:
-            with open(file_path, 'r') as f:
-                file_content = [line.rstrip() for line in f.readlines()[:100]]
-            preview_type = 'step'
+            # 创建唯一的可视化目录
+            visualization_dir = os.path.join(PLOTS_FOLDER, session.get('user_id', 'default'))
+            if not os.path.exists(visualization_dir):
+                os.makedirs(visualization_dir)
             
-            # 尝试为STEP文件生成可视化预览
-            try:
-                session_id = prepare_user_session()
-                visualization_file = f"step_preview_{session_id}.png"
-                
-                # 确保plots目录存在
-                plots_dir = os.path.join(app.config['STATIC_PLOTS_FOLDER'], session_id)
-                os.makedirs(plots_dir, exist_ok=True)
-                
-                visualization_path = os.path.join(plots_dir, visualization_file)
-                
-                # 构建脚本的绝对路径
-                script_path = os.path.join(os.path.dirname(__file__), 'step_to_fanuc_numpy.py')
-                
-                # 检查脚本是否存在
-                if not os.path.exists(script_path):
-                    app.logger.error(f"转换脚本不存在: {script_path}")
-                    has_visualization = False
-                    raise FileNotFoundError(f"转换脚本不存在: {script_path}")
-                
-                # 检查输入文件是否存在
-                if not os.path.exists(file_path):
-                    app.logger.error(f"输入文件不存在: {file_path}")
-                    has_visualization = False
-                    raise FileNotFoundError(f"输入文件不存在: {file_path}")
-                
-                # 生成可视化但不生成G代码
-                cmd = [
-                    'python', 
-                    script_path,
-                    file_path,
-                    '--preview-only',  # 只生成预览图像，不生成G代码
-                    '--preview-output', visualization_path  # 输出路径
-                ]
-                
-                print(f"执行命令: {' '.join(cmd)}")
-                
-                # 执行可视化
-                process = subprocess.run(
-                    cmd, 
-                    capture_output=True, 
-                    text=True, 
-                    check=False,
-                    timeout=60  # 增加超时时间，允许更复杂的STEP文件处理
-                )
-                
-                print(f"命令标准输出: {process.stdout}")
-                print(f"命令错误输出: {process.stderr}")
-                print(f"返回码: {process.returncode}")
-                
-                if process.returncode == 0 and os.path.exists(visualization_path):
-                    has_visualization = True
-                    # 转换为相对路径，以便模板使用
-                    visualization_path = f"plots/{session_id}/{visualization_file}"
-                else:
-                    error_msg = f"STEP文件可视化生成失败，返回码: {process.returncode}"
-                    if process.stderr:
-                        error_msg += f"\n错误信息: {process.stderr}"
-                    app.logger.error(error_msg)
-                    has_visualization = False
-            except subprocess.TimeoutExpired:
-                app.logger.error(f"生成STEP文件可视化超时")
-                has_visualization = False
-            except Exception as e:
-                app.logger.error(f"生成STEP文件可视化出错: {str(e)}")
-                import traceback
-                app.logger.error(traceback.format_exc())
-                # 可视化失败不影响整体功能
-                has_visualization = False
-                
+            visualization_path = os.path.join(visualization_dir, f"{os.path.splitext(filename)[0]}_preview.png")
+            relative_path = os.path.join('static', 'plots', session.get('user_id', 'default'), f"{os.path.splitext(filename)[0]}_preview.png")
+            
+            # 确定当前平台
+            system_platform = platform.machine().lower()
+            
+            if os.path.exists(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'step_processor_fallback.py')):
+                processor_module = 'step_processor_fallback' if system_platform in ('aarch64', 'arm64') else 'numpy_step_processor'
+                script_path = 'step_to_fanuc_numpy.py' 
+            else:
+                script_path = os.path.join('web', 'step_to_fanuc_numpy.py')
+            
+            # 调用处理脚本生成可视化
+            cmd = [
+                sys.executable,
+                script_path,
+                file_path,
+                '--preview-only',
+                '--preview-output', visualization_path
+            ]
+            
+            # 执行命令
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            
+            # 检查结果
+            if result.returncode == 0 and os.path.exists(visualization_path):
+                has_visualization = True
+            else:
+                print(f"可视化生成失败: {result.stderr}")
         except Exception as e:
-            app.logger.error(f"读取STEP文件出错: {str(e)}")
-            file_content = ["无法读取文件内容"]
-            preview_type = 'error'
-    
-    elif filename.lower().endswith('.dwg'):
-        # DWG文件(二进制)预览 - 显示文件信息
-        preview_type = 'dwg'
-        file_content = ["DWG是二进制文件格式，无法直接显示内容"]
+            print(f"生成可视化时出错: {str(e)}")
     
     return render_template('file_preview.html', 
-                          filename=filename,
-                          file_info=file_info,
-                          file_content=file_content,
-                          preview_type=preview_type,
-                          has_visualization=has_visualization,
-                          visualization_path=visualization_path)
+                         filename=filename,
+                         file_size=file_size_formatted,
+                         file_type=file_type,
+                         preview_type=file_type,
+                         creation_time=creation_time,
+                         modification_time=modification_time,
+                         file_content=file_content,
+                         has_visualization=has_visualization,
+                         visualization_path=relative_path if has_visualization else "")
 
 @app.route('/proceed_to_conversion')
 def proceed_to_conversion():

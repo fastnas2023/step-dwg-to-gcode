@@ -27,15 +27,17 @@ cachetools==4.2.2  # 缓存支持
 flasgger==0.9.5  # API文档
 
 # STEP文件处理
-PythonOCC-Core==7.7.0
+# ARM架构下暂时跳过PythonOCC-Core安装，使用替代方案
+# 为x86架构安装PythonOCC-Core
+PythonOCC-Core==7.7.0; platform_machine != "aarch64" and platform_machine != "arm64"
 
 # DWG/DXF文件处理
-ezdxf==1.1.0
+ezdxf==1.0.1  # 使用更兼容ARM架构的版本
 
 # 路径规划
-networkx==3.1
+networkx==2.8.8  # 降级到更兼容的版本
 
 # 开发工具（可选）
-pytest==7.4.0
-black==23.7.0
-flake8==6.1.0
+pytest==7.0.0
+black==23.1.0
+flake8==6.0.0
