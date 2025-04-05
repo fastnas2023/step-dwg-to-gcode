@@ -196,8 +196,8 @@ def file_preview():
     file_ext = os.path.splitext(filename)[1].lower().lstrip('.')
     file_type = 'step' if file_ext in ['stp', 'step'] else 'dwg' if file_ext in ['dwg', 'dxf'] else 'unknown'
     
-    creation_time = datetime.fromtimestamp(os.path.getctime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
-    modification_time = datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
+    creation_time = datetime.datetime.fromtimestamp(os.path.getctime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
+    modification_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
     
     # 读取文件内容预览（前100行）
     file_content = ""
