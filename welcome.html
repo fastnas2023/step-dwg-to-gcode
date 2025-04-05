@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>STEP/DWG 到 G代码转换器 - STEP/DWG to G-code Converter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        .container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .column {
+            flex: 1;
+            min-width: 300px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+        h1 {
+            color: #0066cc;
+        }
+        h2 {
+            color: #444;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        .btn {
+            display: inline-block;
+            background-color: #0066cc;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+            transition: background-color 0.3s;
+        }
+        .btn:hover {
+            background-color: #0055aa;
+        }
+        .features {
+            margin-top: 20px;
+        }
+        .feature-item {
+            margin-bottom: 10px;
+            padding-left: 20px;
+            position: relative;
+        }
+        .feature-item:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #0066cc;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>STEP/DWG 到 G代码转换器</h1>
+        <h1>STEP/DWG to G-code Converter</h1>
+    </div>
+    
+    <div class="container">
+        <div class="column">
+            <h2>欢迎使用</h2>
+            <p>这是一个强大的CAD文件转G代码工具，可以将STEP和DWG文件转换为FANUC兼容的G代码。</p>
+            
+            <div class="features">
+                <h3>主要功能:</h3>
+                <div class="feature-item">支持STEP和DWG文件格式</div>
+                <div class="feature-item">多种转换器选择（标准版、无NumPy版、NumPy优化版）</div>
+                <div class="feature-item">详细的3D可视化和路径优化</div>
+                <div class="feature-item">自定义加工参数（进给速度、安全高度、切削深度）</div>
+                <div class="feature-item">详细的转换结果分析和预览</div>
+            </div>
+            
+            <a href="http://localhost:8888" class="btn">启动Web界面 (端口8888) →</a>
+        </div>
+        
+        <div class="column">
+            <h2>Welcome</h2>
+            <p>This is a powerful CAD file to G-code tool that converts STEP and DWG files to FANUC-compatible G-code.</p>
+            
+            <div class="features">
+                <h3>Key Features:</h3>
+                <div class="feature-item">Support for STEP and DWG file formats</div>
+                <div class="feature-item">Multiple converter options (Standard, No-NumPy, NumPy Optimized)</div>
+                <div class="feature-item">Detailed 3D visualization and path optimization</div>
+                <div class="feature-item">Custom machining parameters (feed rate, safety height, cut depth)</div>
+                <div class="feature-item">Comprehensive conversion results analysis and preview</div>
+            </div>
+            
+            <a href="http://localhost:8888" class="btn">Launch Web Interface (Port 8888) →</a>
+        </div>
+    </div>
+</body>
+</html> 

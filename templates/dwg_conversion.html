@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DWG文件转换设置 - STEP/DWG到G代码转换器</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .settings-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .file-info {
+            margin-bottom: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #e9ecef;
+        }
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        footer {
+            margin-top: 50px;
+            text-align: center;
+            color: #6c757d;
+        }
+        .part-type-cards {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .part-type-card {
+            flex: 1 0 calc(33.333% - 15px);
+            min-width: 200px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .part-type-card:hover {
+            border-color: #0d6efd;
+            background-color: #f0f4ff;
+        }
+        .part-type-card.selected {
+            border-color: #0d6efd;
+            background-color: #e6effd;
+            box-shadow: 0 0 5px rgba(13, 110, 253, 0.25);
+        }
+        .part-type-icon {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .workflow-steps {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.05);
+        }
+        .step-item {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .step-number {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background-color: #0d6efd;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        .step-content {
+            flex-grow: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>DWG文件转换设置</h1>
+            <p class="lead">选择零件类型并配置DWG到STEP的转换参数</p>
+        </div>
+
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="settings-container">
+            <div class="file-info">
+                <h5>已上传文件</h5>
+                <p class="mb-0"><strong>{{ filename }}</strong></p>
+            </div>
+
+            <form action="{{ url_for('convert_dwg') }}" method="post">
+                <h5>选择零件类型</h5>
+                <p class="text-muted">选择合适的零件类型可以让系统针对特定几何特征进行优化处理</p>
+                
+                <div class="part-type-cards">
+                    <div class="part-type-card selected" data-value="busbar">
+                        <div class="part-type-icon">🔌</div>
+                        <h6>标准母排</h6>
+                        <p class="text-muted small">标准尺寸的电气连接母排</p>
+                    </div>
+                    <div class="part-type-card" data-value="front_busbar">
+                        <div class="part-type-icon">⚡</div>
+                        <h6>前方母排</h6>
+                        <p class="text-muted small">前端连接母排，优化前连接部分</p>
+                    </div>
+                    <div class="part-type-card" data-value="rear_busbar">
+                        <div class="part-type-icon">🔋</div>
+                        <h6>后方母排</h6>
+                        <p class="text-muted small">后端连接母排，优化后连接部分</p>
+                    </div>
+                    <div class="part-type-card" data-value="plate">
+                        <div class="part-type-icon">📏</div>
+                        <h6>平板零件</h6>
+                        <p class="text-muted small">平面板状零件</p>
+                    </div>
+                    <div class="part-type-card" data-value="bracket">
+                        <div class="part-type-icon">🔧</div>
+                        <h6>支架</h6>
+                        <p class="text-muted small">各类支撑支架零件</p>
+                    </div>
+                    <div class="part-type-card" data-value="generic">
+                        <div class="part-type-icon">📦</div>
+                        <h6>通用零件</h6>
+                        <p class="text-muted small">其他类型的零件</p>
+                    </div>
+                </div>
+                
+                <input type="hidden" name="part_type" id="part_type" value="busbar">
+                
+                <div class="workflow-steps">
+                    <h5 class="mb-3">转换流程</h5>
+                    
+                    <div class="step-item">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h6>DWG到STEP转换</h6>
+                            <p class="text-muted">系统将首先将DWG文件转换为STEP格式</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h6>转到STEP设置页面</h6>
+                            <p class="text-muted">转换完成后，您将自动进入STEP转G代码设置页面</p>
+                        </div>
+                    </div>
+                    
+                    <div class="step-item">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h6>生成G代码</h6>
+                            <p class="text-muted">最终完成G代码生成</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary me-2">返回</a>
+                    <button type="submit" class="btn btn-primary">开始转换DWG到STEP</button>
+                </div>
+            </form>
+        </div>
+
+        <footer>
+            <p>STEP到G代码转换器 - Web界面 &copy; 2023</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // 零件类型选择卡片交互
+        const partTypeCards = document.querySelectorAll('.part-type-card');
+        const partTypeInput = document.getElementById('part_type');
+        
+        partTypeCards.forEach(card => {
+            card.addEventListener('click', function() {
+                // 移除所有卡片的选中状态
+                partTypeCards.forEach(c => c.classList.remove('selected'));
+                
+                // 为当前卡片添加选中状态
+                this.classList.add('selected');
+                
+                // 更新隐藏字段的值
+                partTypeInput.value = this.dataset.value;
+            });
+        });
+    </script>
+</body>
+</html> 

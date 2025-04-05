@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G代码查看 - {{ filename }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .gcode-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .gcode-card {
+            margin-bottom: 20px;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.05);
+            padding: 20px;
+        }
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        footer {
+            margin-top: 50px;
+            text-align: center;
+            color: #6c757d;
+        }
+        .file-info {
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .file-info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .file-info-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .code-view {
+            max-height: 600px;
+            overflow-y: auto;
+            background-color: #1e1e1e; /* 深色背景 */
+            color: #d4d4d4; /* 浅色文字 */
+            border-radius: 4px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .line-number {
+            color: #6c757d;
+            -webkit-user-select: none;
+            user-select: none;
+            margin-right: 10px;
+            display: inline-block;
+            min-width: 40px;
+            text-align: right;
+            border-right: 1px solid #444;
+            padding-right: 10px;
+        }
+        .gcode-line {
+            padding-left: 10px;
+            white-space: pre;
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+        .comment {
+            color: #6A9955; /* 注释颜色 */
+        }
+        .g-command {
+            color: #569CD6; /* G命令颜色 */
+            font-weight: bold;
+        }
+        .m-command {
+            color: #4EC9B0; /* M命令颜色 */
+            font-weight: bold;
+        }
+        .coordinate {
+            color: #CE9178; /* 坐标颜色 */
+        }
+        .feed-speed {
+            color: #DCDCAA; /* 进给速度颜色 */
+        }
+        .code-search {
+            margin-bottom: 15px;
+        }
+        .code-toolbar {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px 4px 0 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .stat-card {
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-left: 4px solid #0d6efd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>G代码查看</h1>
+            <p class="lead">查看和分析生成的G代码文件</p>
+        </div>
+
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="gcode-container">
+            <div class="gcode-card">
+                <h4>文件信息</h4>
+                <div class="file-info">
+                    <div class="file-info-item">
+                        <span>文件名称:</span>
+                        <strong>{{ file_info.name }}</strong>
+                    </div>
+                    <div class="file-info-item">
+                        <span>文件大小:</span>
+                        <strong>{{ file_info.size }}</strong>
+                    </div>
+                    <div class="file-info-item">
+                        <span>行数:</span>
+                        <strong>{{ file_info.line_count }} 行</strong>
+                    </div>
+                    <div class="file-info-item">
+                        <span>创建时间:</span>
+                        <strong>{{ file_info.created }}</strong>
+                    </div>
+                    <div class="file-info-item">
+                        <span>修改时间:</span>
+                        <strong>{{ file_info.modified }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gcode-card">
+                <h4>加工信息</h4>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="stat-card">
+                            <h6>行数</h6>
+                            <p class="mb-0">{{ stats.line_count }} 行</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card">
+                            <h6>预计加工时间</h6>
+                            <p class="mb-0">{{ stats.estimated_time }}</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card">
+                            <h6>文件大小</h6>
+                            <p class="mb-0">{{ stats.file_size }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="gcode-card">
+                <h4>G代码内容</h4>
+                
+                <div class="code-toolbar">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="code-search">
+                                <div class="input-group">
+                                    <input type="text" id="searchInput" class="form-control" placeholder="搜索G代码内容...">
+                                    <button class="btn btn-outline-secondary" type="button" id="searchButton">
+                                        <i class="bi bi-search"></i> 搜索
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a href="{{ url_for('download', filename=filename) }}" class="btn btn-primary">
+                                <i class="bi bi-download"></i> 下载文件
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="code-view" id="codeView">
+                    {% for line in content %}
+                        <div class="code-line" id="line-{{ loop.index }}">
+                            <span class="line-number">{{ loop.index }}</span>
+                            <span class="gcode-line">{{ line }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <a href="{{ url_for('show_results') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> 返回结果页面
+                </a>
+                <a href="{{ url_for('index') }}" class="btn btn-primary">
+                    <i class="bi bi-house"></i> 返回主页
+                </a>
+            </div>
+        </div>
+
+        <footer>
+            <p>STEP/DWG到G代码转换器 - Web界面 &copy; 2024</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // G代码语法高亮
+        document.addEventListener('DOMContentLoaded', function() {
+            const codeLines = document.querySelectorAll('.gcode-line');
+            
+            codeLines.forEach(line => {
+                let content = line.innerHTML;
+                
+                // 高亮G命令
+                content = content.replace(/\b(G\d+)\b/g, '<span class="g-command">$1</span>');
+                
+                // 高亮M命令
+                content = content.replace(/\b(M\d+)\b/g, '<span class="m-command">$1</span>');
+                
+                // 高亮坐标
+                content = content.replace(/\b([XYZ][-+]?\d*\.?\d+)\b/g, '<span class="coordinate">$1</span>');
+                
+                // 高亮进给速度
+                content = content.replace(/\b(F\d+)\b/g, '<span class="feed-speed">$1</span>');
+                
+                // 高亮注释
+                content = content.replace(/(\(.+?\))/g, '<span class="comment">$1</span>');
+                content = content.replace(/(;.+?)$/g, '<span class="comment">$1</span>');
+                
+                line.innerHTML = content;
+            });
+            
+            // 搜索功能
+            const searchInput = document.getElementById('searchInput');
+            const searchButton = document.getElementById('searchButton');
+            const codeView = document.getElementById('codeView');
+            
+            function performSearch() {
+                const searchTerm = searchInput.value.trim().toLowerCase();
+                if (searchTerm === '') return;
+                
+                // 清除之前的搜索高亮
+                document.querySelectorAll('.search-highlight').forEach(el => {
+                    el.outerHTML = el.innerHTML;
+                });
+                
+                let found = false;
+                
+                document.querySelectorAll('.code-line').forEach(line => {
+                    const text = line.textContent.toLowerCase();
+                    if (text.includes(searchTerm)) {
+                        // 高亮匹配的行
+                        line.style.backgroundColor = 'rgba(255, 255, 0, 0.1)';
+                        
+                        // 高亮匹配的文本，但保留原有的语法高亮
+                        if (!found) {
+                            found = true;
+                            line.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    } else {
+                        line.style.backgroundColor = '';
+                    }
+                });
+                
+                if (!found) {
+                    alert('未找到匹配内容');
+                }
+            }
+            
+            searchButton.addEventListener('click', performSearch);
+            
+            searchInput.addEventListener('keyup', function(event) {
+                if (event.key === 'Enter') {
+                    performSearch();
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

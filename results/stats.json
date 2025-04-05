@@ -1,0 +1,30 @@
+{
+  "dimensions": {
+    "width": 100.0,
+    "height": 200.0,
+    "depth": 0.0
+  },
+  "points": {
+    "count": 25,
+    "mean_x": 51.2,
+    "mean_y": 95.2,
+    "mean_z": 0.0,
+    "std_x": 32.102336363573286,
+    "std_y": 60.14116726502737,
+    "std_z": 0.0
+  },
+  "edges": {
+    "count": 25,
+    "mean_length": 65.40499215557423,
+    "min_length": 0.0,
+    "max_length": 223.60679774997897,
+    "total_length": 1635.1248038893557
+  },
+  "contours": {
+    "count": 1,
+    "mean_length": 1635.124803889356,
+    "total_length": 1635.124803889356,
+    "mean_area": 250.0,
+    "total_area": 250.0
+  }
+}

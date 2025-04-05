@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  step-dwg-to-gcode:
+    build:
+      context: .
+      dockerfile: Dockerfile.x86
+    image: step-dwg-to-gcode:x86-latest
+    container_name: step-dwg-to-gcode
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data/uploads:/app/web/uploads
+      - ./data/output:/app/web/output
+      - ./data/plots:/app/web/static/plots
+    environment:
+      - FLASK_ENV=production
+      - TZ=Asia/Shanghai
+      # x86 服务器特定优化
+      - NUMBA_NUM_THREADS=4  # 调整为匹配CPU核心数
+      - PYTHONOPTIMIZE=1  # 启用 Python 优化
+    # 资源限制
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 4G
+        reservations:
+          cpus: '2'
+          memory: 2G
+    # 调整 ulimits
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    # 日志配置
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+
+  # 添加 Nginx 反向代理
+  nginx:
+    image: nginx:stable
+    container_name: step-dwg-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"  # HTTPS支持
+    volumes:
+      - ./nginx/conf/:/etc/nginx/conf.d/
+      - ./nginx/ssl/:/etc/nginx/ssl/
+      - ./nginx/logs/:/var/log/nginx/
+    depends_on:
+      - step-dwg-to-gcode
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+  # 添加可选的监控服务
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: step-dwg-prometheus
+    restart: unless-stopped
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    profiles: ["monitoring"]
+    
+  grafana:
+    image: grafana/grafana:latest
+    container_name: step-dwg-grafana
+    restart: unless-stopped
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    profiles: ["monitoring"]
+
+# 持久化数据卷
+volumes:
+  prometheus_data:
+  grafana_data: 

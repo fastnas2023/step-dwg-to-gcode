@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+
+{% block title %}STEP文件分析 - {{ filename }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h2 class="card-title h5 mb-0">
+                <i class="bi bi-file-earmark-text me-2"></i>STEP文件分析: {{ filename }}
+            </h2>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                此分析提供对STEP文件结构和内容的技术洞察，帮助诊断潜在问题。
+            </div>
+            
+            {% if results.issues and results.issues|length > 0 %}
+            <div class="alert alert-warning">
+                <h5><i class="bi bi-exclamation-triangle-fill me-2"></i>检测到以下潜在问题:</h5>
+                <ul class="mb-0">
+                    {% for issue in results.issues %}
+                    <li>{{ issue }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% else %}
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                未检测到明显问题，文件结构完整。
+            </div>
+            {% endif %}
+            
+            <div class="row mt-4">
+                <!-- 文件信息 -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">文件信息</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <tbody>
+                                    {% for key, value in results.file_info.items() %}
+                                    <tr>
+                                        <th>{{ key }}</th>
+                                        <td>{{ value }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 几何信息 -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">几何信息</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <tbody>
+                                    {% for key, value in results.geometry.items() %}
+                                    {% if key != 'dimensions' %}
+                                    <tr>
+                                        <th>{{ key }}</th>
+                                        <td>{{ value }}</td>
+                                    </tr>
+                                    {% endif %}
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            
+                            {% if results.geometry.dimensions %}
+                            <h6 class="mt-3">模型尺寸</h6>
+                            <table class="table table-striped">
+                                <tbody>
+                                    {% for key, value in results.geometry.dimensions.items() %}
+                                    <tr>
+                                        <th>{{ key }}</th>
+                                        <td>{{ value }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- STEP实体 -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">STEP实体统计</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <tbody>
+                                    {% for key, value in results.entities.items() %}
+                                    <tr>
+                                        <th>{{ key }}</th>
+                                        <td>{{ value }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 验证结果 -->
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        <div class="card-header bg-light">
+                            <h5 class="card-title mb-0">验证结果</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped">
+                                <tbody>
+                                    {% for key, value in results.validation.items() %}
+                                    <tr>
+                                        <th>{{ key }}</th>
+                                        <td>
+                                            {% if value == "成功" %}
+                                            <span class="text-success"><i class="bi bi-check-circle-fill"></i> {{ value }}</span>
+                                            {% elif value == "失败" %}
+                                            <span class="text-danger"><i class="bi bi-x-circle-fill"></i> {{ value }}</span>
+                                            {% else %}
+                                            {{ value }}
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            
+                            {% if results.diagnosis %}
+                            <div class="alert alert-secondary mt-3">
+                                <strong>诊断结果:</strong> {{ results.diagnosis }}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 错误跟踪 -->
+            {% if results.error_traceback %}
+            <div class="card mt-4">
+                <div class="card-header bg-danger text-white">
+                    <h5 class="card-title mb-0">错误跟踪</h5>
+                </div>
+                <div class="card-body">
+                    <pre>{{ results.error_traceback }}</pre>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="d-flex justify-content-between mt-4 mb-5">
+        <a href="{{ url_for('file_preview') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> 返回文件预览
+        </a>
+        <a href="{{ url_for('step_conversion') }}" class="btn btn-primary">
+            继续转换 <i class="bi bi-arrow-right"></i>
+        </a>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "9000:9000"
+    volumes:
+      - "./uploads:/app/uploads"
+      - "./output:/app/output"
+      - "./static/plots:/app/static/plots"
+    restart: unless-stopped
+    environment:
+      - PORT=9000
+      - HOST=0.0.0.0
+      - DEBUG=false 

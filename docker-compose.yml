@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  step-dwg-to-gcode:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: step-dwg-to-gcode:latest
+    container_name: step-dwg-to-gcode
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data/uploads:/app/web/uploads
+      - ./data/output:/app/web/output
+      - ./data/plots:/app/web/static/plots
+    environment:
+      - FLASK_ENV=production
+      - TZ=Asia/Shanghai
+    # 调整 ulimits 以处理更大的文件
+    ulimits:
+      nofile:
+        soft: 4096
+        hard: 4096
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s 

@@ -1,0 +1,41 @@
+# 基础依赖
+Flask==2.0.1
+Werkzeug==2.0.1
+Jinja2==3.0.1
+MarkupSafe==2.0.1
+itsdangerous==2.0.1
+click==8.0.1
+
+# 数据处理
+numpy==1.23.5  # 选择兼容性更好的版本用于ARM
+matplotlib==3.5.3
+scipy==1.9.3
+
+# 文件处理
+Pillow==9.5.0  # 用于图像处理
+python-dotenv==0.19.0
+python-dateutil==2.8.2
+
+# 工具
+tqdm==4.62.3  # 进度条
+pytz==2021.1  # 时区支持
+
+# 性能优化
+cachetools==4.2.2  # 缓存支持
+
+# 调试工具
+flasgger==0.9.5  # API文档
+
+# STEP文件处理
+PythonOCC-Core==7.7.0
+
+# DWG/DXF文件处理
+ezdxf==1.1.0
+
+# 路径规划
+networkx==3.1
+
+# 开发工具（可选）
+pytest==7.4.0
+black==23.7.0
+flake8==6.1.0

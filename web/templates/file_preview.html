@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>文件预览 - STEP/DWG到G代码转换器</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .preview-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .preview-card {
+            margin-bottom: 20px;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 0 5px rgba(0,0,0,0.05);
+            padding: 20px;
+        }
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        footer {
+            margin-top: 50px;
+            text-align: center;
+            color: #6c757d;
+        }
+        .file-info {
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .file-info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        .file-info-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .code-preview {
+            max-height: 400px;
+            overflow-y: auto;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 14px;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+        .line-number {
+            color: #6c757d;
+            -webkit-user-select: none;
+            user-select: none;
+            margin-right: 10px;
+            display: inline-block;
+            width: 30px;
+            text-align: right;
+        }
+        .action-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+        }
+        .dwg-info {
+            background-color: #e9ecef;
+            border-left: 4px solid #0d6efd;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        .step-info {
+            background-color: #e9ecef;
+            border-left: 4px solid #198754;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        
+        .visualization-preview {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+        
+        .visualization-preview img {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            transition: transform 0.3s ease-in-out;
+        }
+        
+        .visualization-preview img:hover {
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>文件预览</h1>
+            <p class="lead">查看上传的文件内容，确认无误后继续转换</p>
+        </div>
+
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="preview-container">
+            <div class="preview-card">
+                <h4>文件信息</h4>
+                
+                {% if preview_type == 'step' %}
+                <div class="step-info">
+                    <strong>STEP文件信息</strong>
+                    <p class="mb-0">STEP (Standard for Exchange of Product Data) 是一种国际标准的CAD文件格式，用于在不同CAD系统之间交换3D模型数据。</p>
+                </div>
+                {% elif preview_type == 'dwg' %}
+                <div class="dwg-info">
+                    <strong>DWG文件信息</strong>
+                    <p class="mb-0">DWG 是AutoCAD的原生文件格式，包含2D或3D设计数据。系统将自动将DWG转换为STEP格式进行处理。</p>
+                </div>
+                {% endif %}
+                
+                <div class="file-info">
+                    <div class="file-info-item">
+                        <span>文件名称:</span>
+                        <strong>{{ file_info.name }}</strong>
+                    </div>
+                    <div class="file-info-item">
+                        <span>文件类型:</span>
+                        <strong>{{ file_info.type }}</strong>
+                    </div>
+                    <div class="file-info-item">
+                        <span>文件大小:</span>
+                        <strong>{{ file_info.size }}</strong>
+                    </div>
+                    <div class="file-info-item">
+                        <span>创建时间:</span>
+                        <strong>{{ file_info.created }}</strong>
+                    </div>
+                    <div class="file-info-item">
+                        <span>修改时间:</span>
+                        <strong>{{ file_info.modified }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="preview-card">
+                <h4>文件内容预览</h4>
+                
+                {% if preview_type == 'step' %}
+                <div class="step-info">
+                    <h3>STEP文件内容预览 (前100行)</h3>
+                    {% if has_visualization %}
+                    <div class="visualization-preview">
+                        <h4>3D模型预览</h4>
+                        <img src="{{ url_for('static', filename=visualization_path) }}" alt="STEP文件3D预览">
+                        <p class="note">此可视化是通过解析STEP文件几何数据自动生成的，可能与实际模型略有差异</p>
+                    </div>
+                    {% endif %}
+                    <div class="action-buttons">
+                        <a href="{{ url_for('proceed_to_conversion') }}" class="btn btn-primary">继续转换</a>
+                        <a href="{{ url_for('analyze_step_file') }}" class="btn btn-info">分析STEP文件</a>
+                    </div>
+                    <pre class="code-preview">{% for line in file_content %}{{ line }}
+{% endfor %}</pre>
+                </div>
+                {% elif preview_type == 'dwg' %}
+                <div class="dwg-info">
+                    <h3>DWG文件信息</h3>
+                    <p>DWG是二进制文件格式，无法直接显示内容</p>
+                    <div class="action-buttons">
+                        <a href="{{ url_for('proceed_to_conversion') }}" class="btn btn-primary">继续转换</a>
+                    </div>
+                    <div class="binary-file-info">
+                        <p><strong>文件类型:</strong> {{ file_info.type }}</p>
+                        <p><strong>文件大小:</strong> {{ file_info.size }}</p>
+                        <p><strong>创建时间:</strong> {{ file_info.created }}</p>
+                        <p><strong>修改时间:</strong> {{ file_info.modified }}</p>
+                    </div>
+                </div>
+                {% else %}
+                <div class="error-preview">
+                    <h3>文件内容预览</h3>
+                    <pre class="code-preview error">{% for line in file_content %}{{ line }}
+{% endfor %}</pre>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="action-buttons">
+                <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> 返回主页
+                </a>
+            </div>
+        </div>
+
+        <footer>
+            <p>STEP/DWG到G代码转换器 - Web界面 &copy; 2024</p>
+        </footer>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+</body>
+</html> 

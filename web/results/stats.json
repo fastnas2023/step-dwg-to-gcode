@@ -1,0 +1,30 @@
+{
+  "points": {
+    "count": 25
+  },
+  "edges": {
+    "count": 25,
+    "total_length": 1635.1248038893557,
+    "avg_length": 65.40499215557423,
+    "min_length": 0.0,
+    "max_length": 223.60679774997897
+  },
+  "contours": {
+    "count": 1,
+    "avg_points": 22.0,
+    "min_points": 22,
+    "max_points": 22
+  },
+  "bounds": {
+    "width": 100.0,
+    "depth": 200.0,
+    "height": 0.0,
+    "volume": 0.0,
+    "min_x": 0.0,
+    "min_y": 0.0,
+    "min_z": 0.0,
+    "max_x": 100.0,
+    "max_y": 200.0,
+    "max_z": 0.0
+  }
+}

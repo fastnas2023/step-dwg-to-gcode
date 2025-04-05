@@ -1,0 +1,37 @@
+# Cursor AI Rules
+
+# 索引排除规则 - 这些目录或文件不会被AI索引或建议
+exclude_from_index:
+  - venv/             # 排除虚拟环境目录
+  - 铜铝复合（cnc）/     # 排除铜铝复合（cnc）目录
+  - node_modules/     # 排除Node.js模块目录
+  - .git/             # 排除Git版本控制目录
+  - __pycache__/      # 排除Python缓存目录
+  - *.pyc             # 排除Python编译文件
+  - *.pyo             # 排除Python优化编译文件
+  - *.pyd             # 排除Python动态库文件
+  - *.so              # 排除共享对象文件
+  - *.o               # 排除对象文件
+  - *.a               # 排除静态库文件
+  - *.lib             # 排除库文件
+  - *.dll             # 排除动态链接库文件
+  - *.exe             # 排除可执行文件
+  - *.bin             # 排除二进制文件
+  - .env              # 排除环境变量文件
+  - .env.*            # 排除所有环境变量文件
+  - .DS_Store         # 排除macOS系统文件
+  - Thumbs.db         # 排除Windows缩略图文件
+
+# AI行为规则
+ai_behavior:
+  # 代码生成风格
+  code_style:
+    language: auto    # 自动检测编程语言
+    comments: chinese # 注释使用中文
+    docstrings: chinese # 文档字符串使用中文
+    variable_naming: snake_case # 变量命名使用蛇形命名法
+
+  # 性能偏好
+  performance:
+    optimize: true    # 生成优化的代码
+    memory_efficient: true # 生成内存高效的代码 

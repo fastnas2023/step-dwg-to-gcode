@@ -1,0 +1,9 @@
+{
+  "input_file": "/Users/jason/step-dwg-to-gcode/web/uploads/TNGA_INTER_BUSBAR_FRONT-1.stp",
+  "output_file": "/Users/jason/step-dwg-to-gcode/web/output/TNGA_INTER_BUSBAR_FRONT-1_fanuc_gcode.nc",
+  "machining_time_minutes": 2.4293738574470582,
+  "machining_time_seconds": 145.76243144682348,
+  "feed_rate": 600.0,
+  "points_count": 20,
+  "gcode_lines": 45
+}
