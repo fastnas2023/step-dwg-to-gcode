@@ -15,7 +15,7 @@ echo
 if [ "$#" -ne 1 ]; then
     echo -e "${RED}错误: 请提供你的GitHub仓库URL${NC}"
     echo -e "用法: $0 <GitHub仓库URL>"
-    echo -e "例如: $0 https://github.com/your-username/step-dwg-to-gcode.git"
+    echo -e "例如: $0 https://github.com/fastnas2023/step-dwg-to-gcode.git"
     exit 1
 fi
 
@@ -23,7 +23,7 @@ REPO_URL=$1
 
 # 验证 URL 格式
 if [[ ! $REPO_URL =~ ^https://github.com/.+/.+\.git$ ]]; then
-    echo -e "${YELLOW}警告: 仓库URL格式可能不正确，应该类似于: https://github.com/username/repo.git${NC}"
+    echo -e "${YELLOW}警告: 仓库URL格式可能不正确，应该类似于: https://github.com/fastnas2023/repo.git${NC}"
     read -p "是否继续? (y/n): " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
