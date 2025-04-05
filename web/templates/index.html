@@ -85,12 +85,12 @@
             <form action="{{ url_for('upload_file') }}" method="post" enctype="multipart/form-data" id="upload-form">
                 <div class="mb-3">
                     <label for="visible-file-input" class="form-label">选择STEP或DWG文件</label>
-                    <input type="file" name="file" id="visible-file-input" class="form-control" accept=".stp,.step,.dwg" required>
-                    <div class="form-text">支持格式: .stp, .step, .dwg</div>
+                    <input type="file" name="file" id="visible-file-input" class="form-control" accept=".stp,.step,.dwg,.dxf" required>
+                    <div class="form-text">支持格式: .stp, .step, .dwg, .dxf</div>
                 </div>
                 
                 <div class="text-center mt-4">
-                    <button type="submit" class="btn btn-primary btn-lg">开始转换</button>
+                    <button type="button" id="upload-btn" class="btn btn-primary btn-lg">开始转换</button>
                 </div>
             </form>
         </div>
@@ -168,8 +168,78 @@
                 const file = this.files[0];
                 fileInfo.textContent = `已选择: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
             } else {
-                fileInfo.textContent = '支持格式: .stp, .step, .dwg';
+                fileInfo.textContent = '支持格式: .stp, .step, .dwg, .dxf';
             }
+        });
+        
+        // AJAX文件上传
+        document.getElementById('upload-btn').addEventListener('click', function() {
+            const fileInput = document.getElementById('visible-file-input');
+            if (fileInput.files.length === 0) {
+                alert('请先选择文件');
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // 显示上传中状态
+            const uploadBtn = document.getElementById('upload-btn');
+            uploadBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> 上传中...';
+            uploadBtn.disabled = true;
+            
+            // 发送AJAX请求
+            fetch('{{ url_for("upload_file") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 创建成功消息
+                    const successAlert = document.createElement('div');
+                    successAlert.className = 'alert alert-success alert-dismissible fade show';
+                    successAlert.role = 'alert';
+                    successAlert.innerHTML = `
+                        ${data.message}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    document.querySelector('.flash-messages').appendChild(successAlert);
+                    
+                    // 直接导航到预览页面
+                    window.location.href = data.redirect;
+                } else {
+                    // 显示错误消息
+                    const errorAlert = document.createElement('div');
+                    errorAlert.className = 'alert alert-danger alert-dismissible fade show';
+                    errorAlert.role = 'alert';
+                    errorAlert.innerHTML = `
+                        上传失败: ${data.error}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    `;
+                    document.querySelector('.flash-messages').appendChild(errorAlert);
+                    
+                    // 恢复按钮状态
+                    uploadBtn.innerHTML = '开始转换';
+                    uploadBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                // 处理网络错误
+                const errorAlert = document.createElement('div');
+                errorAlert.className = 'alert alert-danger alert-dismissible fade show';
+                errorAlert.role = 'alert';
+                errorAlert.innerHTML = `
+                    网络错误: ${error.message}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                `;
+                document.querySelector('.flash-messages').appendChild(errorAlert);
+                
+                // 恢复按钮状态
+                uploadBtn.innerHTML = '开始转换';
+                uploadBtn.disabled = false;
+            });
         });
     </script>
 </body>
