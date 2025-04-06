@@ -211,6 +211,7 @@ def file_preview():
     # 对于STEP文件，尝试生成可视化
     has_visualization = False
     visualization_path = ""
+    relative_path = ""
     
     if file_type == 'step':
         try:
@@ -224,11 +225,23 @@ def file_preview():
             
             # 确定当前平台
             system_platform = platform.machine().lower()
+            print(f"检测到平台: {system_platform}")
             
-            if os.path.exists(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'step_processor_fallback.py')):
-                processor_module = 'step_processor_fallback' if system_platform in ('aarch64', 'arm64') else 'numpy_step_processor'
-                script_path = 'step_to_fanuc_numpy.py' 
+            # 路径检查和调试日志
+            fallback_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'step_processor_fallback.py')
+            web_fallback_path = os.path.join('web', 'step_processor_fallback.py')
+            
+            if os.path.exists(fallback_path):
+                print(f"找到主fallback处理器: {fallback_path}")
+                processor_module = 'step_processor_fallback'
+                script_path = 'step_to_fanuc_numpy.py'
+            elif os.path.exists(web_fallback_path):
+                print(f"找到web目录fallback处理器: {web_fallback_path}")
+                processor_module = 'step_processor_fallback'
+                script_path = os.path.join('web', 'step_to_fanuc_numpy.py')
             else:
+                print("未找到fallback处理器，将使用标准处理器")
+                processor_module = 'numpy_step_processor' if system_platform not in ('aarch64', 'arm64') else 'step_processor_fallback'
                 script_path = os.path.join('web', 'step_to_fanuc_numpy.py')
             
             # 调用处理脚本生成可视化
@@ -240,16 +253,22 @@ def file_preview():
                 '--preview-output', visualization_path
             ]
             
+            print(f"执行命令: {' '.join(cmd)}")
+            
             # 执行命令
             result = subprocess.run(cmd, capture_output=True, text=True)
             
             # 检查结果
             if result.returncode == 0 and os.path.exists(visualization_path):
                 has_visualization = True
+                print(f"可视化生成成功: {visualization_path}")
             else:
                 print(f"可视化生成失败: {result.stderr}")
+                print(f"输出: {result.stdout}")
         except Exception as e:
             print(f"生成可视化时出错: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
     
     return render_template('file_preview.html', 
                          filename=filename,
@@ -364,14 +383,24 @@ def convert_file():
     output_path = os.path.join(user_output_dir, output_filename)
     
     try:
+        # 记录平台信息
+        system_platform = platform.machine().lower()
+        print(f"转换操作 - 当前平台: {system_platform}")
+        
         # 根据文件类型选择转换方法
         if file_ext in ['stp', 'step']:
-            # 确定当前平台
-            system_platform = platform.machine().lower()
+            # 检查处理器和脚本路径
+            fallback_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'step_processor_fallback.py')
+            web_fallback_path = os.path.join('web', 'step_processor_fallback.py')
             
-            if os.path.exists(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'step_processor_fallback.py')):
+            if os.path.exists(fallback_path):
+                print(f"找到主fallback处理器: {fallback_path}")
                 script_path = 'step_to_fanuc_numpy.py'
+            elif os.path.exists(web_fallback_path):
+                print(f"找到web目录fallback处理器: {web_fallback_path}")
+                script_path = os.path.join('web', 'step_to_fanuc_numpy.py')
             else:
+                print("未找到fallback处理器，将使用标准脚本")
                 script_path = os.path.join('web', 'step_to_fanuc_numpy.py')
             
             # 调用STEP转换脚本
@@ -387,10 +416,14 @@ def convert_file():
                 '-v'  # 显示详细输出
             ]
             
+            print(f"执行STEP转换命令: {' '.join(cmd)}")
+            
             # 执行命令
             result = subprocess.run(cmd, capture_output=True, text=True)
             
             if result.returncode != 0:
+                print(f"STEP转换失败: {result.stderr}")
+                print(f"输出: {result.stdout}")
                 return jsonify({
                     'error': f"转换失败: {result.stderr}",
                     'details': result.stdout
@@ -407,6 +440,7 @@ def convert_file():
             # 检查脚本是否存在
             if not os.path.exists(dwg_to_step_path):
                 # 如果脚本不存在，创建一个基本的实现
+                print("未找到dwg_to_step.py，创建基本实现...")
                 create_basic_dwg_to_step_script()
                 dwg_to_step_path = 'dwg_to_step.py'
             
@@ -418,25 +452,48 @@ def convert_file():
                 step_path
             ]
             
-            # 执行DWG到STEP转换
-            dwg_result = subprocess.run(dwg_cmd, capture_output=True, text=True)
+            print(f"执行DWG转换命令: {' '.join(dwg_cmd)}")
             
-            if dwg_result.returncode != 0:
+            # 执行DWG到STEP转换
+            try:
+                dwg_result = subprocess.run(dwg_cmd, capture_output=True, text=True)
+                
+                if dwg_result.returncode != 0:
+                    print(f"DWG到STEP转换失败: {dwg_result.stderr}")
+                    print(f"输出: {dwg_result.stdout}")
+                    return jsonify({
+                        'error': f"DWG到STEP转换失败: {dwg_result.stderr}",
+                        'details': dwg_result.stdout
+                    }), 500
+            except Exception as e:
+                print(f"执行DWG转换命令时出错: {str(e)}")
+                import traceback
+                traceback.print_exc()
                 return jsonify({
-                    'error': f"DWG到STEP转换失败: {dwg_result.stderr}",
-                    'details': dwg_result.stdout
+                    'error': f"DWG到STEP转换命令执行失败: {str(e)}",
+                    'details': "请检查系统环境和依赖"
                 }), 500
             
             if not os.path.exists(step_path):
+                print(f"DWG到STEP转换未生成STEP文件: {step_path}")
                 return jsonify({
                     'error': f"DWG到STEP转换未生成STEP文件",
                     'details': "请检查转换脚本实现"
                 }), 500
             
             # 使用转换后的STEP文件生成G代码
-            if os.path.exists(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'step_processor_fallback.py')):
+            # 检查处理器和脚本路径
+            fallback_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'step_processor_fallback.py')
+            web_fallback_path = os.path.join('web', 'step_processor_fallback.py')
+            
+            if os.path.exists(fallback_path):
+                print(f"找到主fallback处理器: {fallback_path}")
                 script_path = 'step_to_fanuc_numpy.py'
+            elif os.path.exists(web_fallback_path):
+                print(f"找到web目录fallback处理器: {web_fallback_path}")
+                script_path = os.path.join('web', 'step_to_fanuc_numpy.py')
             else:
+                print("未找到fallback处理器，将使用标准脚本")
                 script_path = os.path.join('web', 'step_to_fanuc_numpy.py')
             
             # 调用STEP转换脚本
@@ -452,18 +509,40 @@ def convert_file():
                 '-v'  # 显示详细输出
             ]
             
-            # 执行命令
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            print(f"执行转换后STEP文件转G代码命令: {' '.join(cmd)}")
             
-            if result.returncode != 0:
+            # 执行命令
+            try:
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                
+                if result.returncode != 0:
+                    print(f"转换后STEP转G代码失败: {result.stderr}")
+                    print(f"输出: {result.stdout}")
+                    return jsonify({
+                        'error': f"转换失败: {result.stderr}",
+                        'details': result.stdout
+                    }), 500
+            except Exception as e:
+                print(f"执行STEP到G代码转换命令时出错: {str(e)}")
+                import traceback
+                traceback.print_exc()
                 return jsonify({
-                    'error': f"转换失败: {result.stderr}",
-                    'details': result.stdout
+                    'error': f"STEP到G代码转换命令执行失败: {str(e)}",
+                    'details': "请检查系统环境和依赖"
                 }), 500
         else:
             return jsonify({'error': '不支持的文件类型'}), 400
         
+        # 检查输出文件是否存在
+        if not os.path.exists(output_path):
+            print(f"未生成输出文件: {output_path}")
+            return jsonify({
+                'error': f"转换过程未生成输出文件",
+                'details': "转换过程可能未正确完成"
+            }), 500
+        
         # 转换成功
+        print(f"转换成功: {output_path}")
         return jsonify({
             'success': True,
             'message': '文件转换成功',
@@ -472,6 +551,9 @@ def convert_file():
         })
     
     except Exception as e:
+        print(f"转换过程中出错: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': f"转换过程中出错: {str(e)}"}), 500
 
 def create_basic_dwg_to_step_script():
