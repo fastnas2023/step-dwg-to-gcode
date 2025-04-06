@@ -189,7 +189,7 @@
                     {% endif %}
                     <div class="action-buttons">
                         <a href="{{ url_for('proceed_to_conversion') }}" class="btn btn-primary">继续转换</a>
-                        <a href="{{ url_for('analyze_step_file') }}" class="btn btn-info">分析STEP文件</a>
+                        <a href="{{ url_for('analyze_step') }}" class="btn btn-info">分析STEP文件</a>
                     </div>
                     <pre class="code-preview">{% for line in file_content %}{{ line }}
 {% endfor %}</pre>
