@@ -557,7 +557,7 @@ def convert_file():
             'success': True,
             'message': '文件转换成功',
             'output_filename': output_filename,
-            'download_url': url_for('download_file', filename=output_filename)
+            'download_url': url_for('download', filename=output_filename)
         })
     
     except Exception as e:
