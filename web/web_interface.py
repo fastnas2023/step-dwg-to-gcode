@@ -199,6 +199,15 @@ def file_preview():
     creation_time = datetime.datetime.fromtimestamp(os.path.getctime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
     modification_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path)).strftime('%Y-%m-%d %H:%M:%S')
     
+    # 创建file_info对象，用于在模板中访问
+    file_info = {
+        'name': filename,
+        'size': file_size_formatted,
+        'type': file_type,
+        'created': creation_time,
+        'modified': modification_time
+    }
+    
     # 读取文件内容预览（前100行）
     file_content = ""
     try:
@@ -279,7 +288,8 @@ def file_preview():
                          modification_time=modification_time,
                          file_content=file_content,
                          has_visualization=has_visualization,
-                         visualization_path=relative_path if has_visualization else "")
+                         visualization_path=relative_path if has_visualization else "",
+                         file_info=file_info)
 
 @app.route('/proceed_to_conversion')
 def proceed_to_conversion():
