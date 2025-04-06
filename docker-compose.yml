@@ -15,7 +15,9 @@ services:
       - ./data/output:/app/web/output
       - ./data/plots:/app/web/static/plots
     environment:
-      - FLASK_ENV=production
+      - FLASK_ENV=development
+      - DEBUG=true
+      - FLASK_DEBUG=1
       - TZ=Asia/Shanghai
     # 调整 ulimits 以处理更大的文件
     ulimits:
